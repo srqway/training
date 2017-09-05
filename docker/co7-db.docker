@@ -1,0 +1,12 @@
+# Base Container
+FROM training/co7-base
+
+# Install PostgreSQL 9.6
+RUN rpm -ivh http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm && \
+    yum -y install postgresql96-server
+
+# Install pgBackRest
+RUN yum -y install pgbackrest
+
+# Start init when container starts
+ENTRYPOINT /usr/sbin/init

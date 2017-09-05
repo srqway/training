@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE doc SYSTEM "manifest.dtd">
+<doc>
+    <!-- System-wide variables  -->
+    <variable-list>
+        <variable key="project">pgBackRest</variable>
+        <variable key="dash">-</variable>
+
+        <!-- HTML variables  -->
+        <variable key="prepare-date" eval="y">
+            use Time::Local;
+
+            my ($second, $minute , $hour, $mday, $month, $year) = localtime();
+            $year += 1900;
+
+            my @stryMonth = ('January', 'February', 'March', 'April', 'May', 'June',
+                             'July', 'August', 'September', 'October', 'November', 'December');
+
+            $stryMonth[$month] . ' ' . $mday . ', ' . $year;
+        </variable>
+        <variable key="html-footer" eval="y">
+            'Copyright &amp;copy; 2015' . '-' . substr('{[prepare-date]}', length('{[prepare-date]}') - 4) .
+            ', The PostgreSQL Global Development Group, &lt;a href="https://github.com/pgbackrest/training/blob/master/LICENSE">MIT License&lt;/a>.  Updated ' .
+            '{[prepare-date]}';
+        </variable>
+    </variable-list>
+
+    <source-list>
+        <source key="backup-training"/>
+    </source-list>
+
+    <render-list>
+        <render type="html" compact="y" pretty="y">
+            <render-source key="backup-training" file="../../../backup-training.html"/>
+        </render>
+    </render-list>
+</doc>

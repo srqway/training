@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE doc SYSTEM "doc.dtd">
+<doc title="Practical PostgreSQL Backup &amp; Restore" cmd-line-len="1024">
+    <description>Practical PostgreSQL backup &amp; restore using the core tools and pgBackRest.</description>
+
+    <variable-list>
+        <variable key="script-dir">/training/script</variable>
+
+        <variable key="host-user">testuser</variable>
+        <variable key="host-mount">{[script-dir]}:{[script-dir]}</variable>
+        <variable key="host-option">--cap-add=NET_ADMIN --cap-add=NET_RAW --cap-add=SYS_ADMIN -e 'container=docker' -v /sys/fs/cgroup:/sys/fs/cgroup:ro</variable>
+        <variable key="host-os">co7</variable>
+
+        <variable key="host-db-primary">db-primary</variable>
+        <variable key="host-db-image">training/{[host-os]}-db</variable>
+    </variable-list>
+
+    <!-- ======================================================================================================================= -->
+    <section id="introduction">
+        <title>Introduction</title>
+
+        <host-add name="{[host-db-primary]}" image="{[host-db-image]}" os="{[host-os]}" user="{[host-user]}" mount="{[host-mount]}" option="{[host-option]}">
+        </host-add>
+
+        <p>IT WORKED!!!</p>
+    </section>
+</doc>
