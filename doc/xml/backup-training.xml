@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE doc SYSTEM "doc.dtd">
-<doc title="Practical PostgreSQL Backup &amp; Restore" cmd-line-len="1024">
+<doc title="Practical PostgreSQL Backup &amp; Restore" cmd-line-len="132">
     <description>Practical PostgreSQL backup &amp; restore using the core tools and pgBackRest.</description>
 
     <variable-list>
         <variable key="script-dir">/training/script</variable>
+        <variable key="build-doc">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \
+                &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;--include=backup-training --require=</variable>
 
         <variable key="host-user">testuser</variable>
         <variable key="host-mount">{[script-dir]}:{[script-dir]}</variable>
@@ -13,15 +15,1033 @@
 
         <variable key="host-db-primary">db-primary</variable>
         <variable key="host-db-image">training/{[host-os]}-db</variable>
+
+        <variable key="br-config-file">/etc/pgbackrest.conf</variable>
+        <variable key="br-repo-dir">/var/lib/pgbackrest</variable>
+        <variable key="br-stanza">main</variable>
+
+        <variable key="pg-version">9.6</variable>
+
+        <variable key="pg-bin-dir">/usr/pgsql-{[pg-version]}/bin</variable>
+        <variable key="pg-lib-dir">/var/lib/pgsql</variable>
+        <variable key="pg-data-dir">{[pg-lib-dir]}/{[pg-version]}/data</variable>
+        <variable key="pg-xlog-dir">{[pg-lib-dir]}/{[pg-version]}/pg_xlog</variable>
+        <variable key="pg-hba-file">{[pg-data-dir]}/pg_hba.conf</variable>
+        <variable key="pg-log-file">{[pg-data-dir]}/pg_log/postgresql.log</variable>
+        <variable key="pg-config-file">{[pg-data-dir]}/postgresql.conf</variable>
+        <variable key="pg-recovery-file">{[pg-data-dir]}/recovery.conf</variable>
+        <variable key="pg-backup-dir">{[pg-lib-dir]}/{[pg-version]}/backups</variable>
+
+        <variable key="pg-cluster-create">{[pg-bin-dir]}/initdb -A peer -E UTF8 -k {[pg-data-dir]}</variable>
+        <variable key="pg-cluster-start">systemctl start postgresql-{[pg-version]}</variable>
+        <variable key="pg-cluster-stop">systemctl stop postgresql-{[pg-version]}</variable>
+        <variable key="pg-cluster-reload">systemctl reload postgresql-{[pg-version]}</variable>
+        <variable key="pg-cluster-restart">systemctl restart postgresql-{[pg-version]}</variable>
+        <variable key="pg-cluster-wait">sleep 2</variable>
+
+        <variable key="test-table-data">Important Data</variable>
+        <variable key="cmd-backup-last">ls -1 {[br-repo-dir]}/backup/{[br-stanza]} | tail -5 | head -1</variable>
+
+        <variable key="pg-psql">psql</variable>
+        <variable key="pg-pgdump">pg_dump</variable>
+        <variable key="pg-pgdumpall">pg_dumpall</variable>
+        <variable key="pg-pgbasebackup">pg_basebackup</variable>
     </variable-list>
+
+    <!-- ======================================================================================================================= -->
+    <block-define id="build-doc-at">
+        <p><b>Start working at this point by running</b>:
+
+        <code>{[build-doc]}{[doc-require]}</code></p>
+    </block-define>
+
+    <block-define id="pg-doc-ref">
+        <p>More information about {[pg-doc-description]} can be found in the <link url="{[pg-doc-link]}">PostgreSQL Documentation</link>.</p>
+    </block-define>
 
     <!-- ======================================================================================================================= -->
     <section id="introduction">
         <title>Introduction</title>
 
-        <host-add name="{[host-db-primary]}" image="{[host-db-image]}" os="{[host-os]}" user="{[host-user]}" mount="{[host-mount]}" option="{[host-option]}">
-        </host-add>
+        <p>The purpose of this document is to familiarize the user with the core backup tools that are distributed with <postgres/> as well as one third-party option, <backrest/>.</p>
 
-        <p>IT WORKED!!!</p>
+        <p>Docker is used to simulate a realistic environment so that actual backup strategies can be demonstrated. To logon to any Docker container run:
+
+        <code>docker exec -it doc-&amp;lt;hostname> bash</code>
+
+        Similarly, a command can be run directly without logging on:
+
+        <code>docker exec -it doc-&amp;lt;hostname> &amp;lt;cmd></code>
+
+        A command can be run as a specific user:
+
+        <code>docker exec -u postgres -it doc-&amp;lt;hostname> &amp;lt;cmd></code>
+
+        Pipes and redirection should be wrapped in a <proper>bash</proper> command:
+
+        <code>docker exec -it doc-&amp;lt;hostname> bash -c 'echo "test" > testfile'</code></p>
+
+        <p>All commands are intended to be run as an unprivileged user that has sudo privileges for both the <user>root</user> and <user>postgres</user> users.  It's also possible to run the commands directly as their respective users without modification and in that case the <cmd>sudo</cmd> commands can be stripped off.</p>
+
+        <p>Each main section includes a command to bring the environment to a state where that section's commands can be run.  Thus, if the environment gets into a bad state its possible to reset it without starting from the beginning.</p>
+    </section>
+
+    <!-- ======================================================================================================================= -->
+    <section id="consistency">
+        <title>How <postgres/> Maintains Consistency</title>
+
+        <!-- =================================================================================================================== -->
+        <section id="wal">
+            <title>Write Ahead Log (WAL)</title>
+
+            <p>WAL is the mechanism that <postgres/> uses to ensure that no committed changes are lost. Transactions are written sequentially to the WAL and a transaction is considered to be committed when those writes are flushed to disk. Afterwards, a background process writes the changes into the main database cluster files (also known as the heap). In the event of a crash, the WAL is replayed to make the database consistent.</p>
+
+            <p>WAL is conceptually infinite but in practice is broken up into individual 16MB files called segments.  WAL segments follow the naming convention <id>0000000100000A1E000000FE</id> where the first 8 hexadecimal digits represent the timeline and the next 16 digits are the logical sequence number (LSN).</p>
+
+            <p>An exhaustive description of how WAL works can be found at <link url="http://www.interdb.jp/pg/pgsql09.html">The Internals of PostgreSQL (Chapter 9)</link>.</p>
+        </section>
+
+        <!-- =================================================================================================================== -->
+        <section id="checkpoint">
+            <title>Checkpoints</title>
+
+            <p><postgres/> will periodically ensure that all data written to the WAL is flushed to disk.  This is called a checkpoint.  Checkpoints minimize the amount of WAL replay required after a crash and allows the database to reuse WAL segments applied before a checkpoint.</p>
+
+            <block id="pg-doc-ref">
+                <block-variable-replace key="pg-doc-description">checkpoints</block-variable-replace>
+                <block-variable-replace key="pg-doc-link">https://www.postgresql.org/docs/9.6/static/wal-configuration.html</block-variable-replace>
+            </block>
+        </section>
+
+        <!-- =================================================================================================================== -->
+        <section id="crash-recovery">
+            <title>Crash Recovery</title>
+
+            <p>If <postgres/> crashes, is terminated, or the server goes down, crash recovery must be performed when <postgres/> restarts to ensure the database is consistent.  <postgres/> simply replays all the WAL since the last checkpoint.  Any transactions that were in progress when <postgres/> terminated will not be committed.</p>
+
+            <p>Backup recovery uses the same process except that WAL may need to be replayed from a checkpoint that is older than the last checkpoint.  The <file>backup_label</file> file lets <postgres/> know which checkpoint it should start recovery from.</p>
+
+            <p>Replication also uses this same process to replay transactions from the primary onto the standby.</p>
+
+            <p>WAL replay is the central mechanism for crash recovery, backup recovery, and replication.  Understanding how WAL works is the key to understanding how <postgres/> achieves consistency.</p>
+        </section>
+    </section>
+
+    <!-- ======================================================================================================================= -->
+    <section id="setup">
+        <title>Setup</title>
+            <section id="intro">
+                <title>Introduction</title>
+
+                <host-add name="{[host-db-primary]}" image="{[host-db-image]}" os="{[host-os]}" user="{[host-user]}" mount="{[host-mount]}" option="{[host-option]}">
+                </host-add>
+
+                <p>Setup the test cluster and some sample data that will be used during the training.</p>
+
+                <block id="build-doc-at">
+                    <block-variable-replace key="doc-require">/setup/intro</block-variable-replace>
+                </block>
+            </section>
+
+            <section id="setup-postgres">
+                <title>Setup <postgres/></title>
+
+            <p>Create a cluster and start it.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Create the test cluster</title>
+
+                <execute user="postgres">
+                    <exe-cmd>{[pg-cluster-create]}</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <p>By default <postgres/> will only accept local connections.  The examples in this training will require connections from other servers so <pg-option>listen_addresses</pg-option> is configured to listen on all interfaces.  This may not be appropriate for secure installations.</p>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Set <pg-option>listen_addresses</pg-option></title>
+
+                <postgres-config-option key="listen_addresses">'*'</postgres-config-option>
+            </postgres-config>
+
+            <p>For training purposes the <pg-option>log_line_prefix</pg-option> setting will be minimally configured.  This keeps the log output as brief as possible to better illustrate important information.</p>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Set <pg-option>log_line_prefix</pg-option></title>
+
+                <postgres-config-option key="log_line_prefix">''</postgres-config-option>
+            </postgres-config>
+
+            <p>By default <postgres/> includes the day of the week in the log filename.  This makes automating the user guide a bit more complicated so the <pg-option>log_filename</pg-option> is set to a constant.</p>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Set <pg-option>log_filename</pg-option></title>
+
+                <postgres-config-option key="log_filename">'postgresql.log'</postgres-config-option>
+            </postgres-config>
+
+            <p>WAL senders are required for <file>pg_basebackup</file> and replication so enable them.</p>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Set <pg-option>max_wal_senders</pg-option></title>
+
+                <postgres-config-option key="max_wal_senders">10</postgres-config-option>
+            </postgres-config>
+
+            <p>The WAL level must be set to replica.</p>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Set <pg-option>wal_level</pg-option></title>
+
+                <postgres-config-option key="wal_level">replica</postgres-config-option>
+            </postgres-config>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Start the test cluster</title>
+
+                <execute user="root">
+                    <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+                </execute>
+            </execute-list>
+        </section>
+
+        <section id="sample-data">
+            <title>Sample Data</title>
+
+            <p>Create a sample database to provide some data to backup up.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Show sample database script</title>
+
+                <execute user="postgres" output="y" filter="n">
+                    <exe-cmd>cat {[script-dir]}/setup-db.sql</exe-cmd>
+                    <exe-highlight>create table</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Create sample database</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>{[pg-psql]} -f {[script-dir]}/setup-db.sql</exe-cmd>
+                </execute>
+            </execute-list>
+        </section>
+    </section>
+
+    <!-- ======================================================================================================================= -->
+    <section id="pg-dump" depend="/setup">
+        <title>pg_dump</title>
+
+        <section id="intro">
+            <title>Introduction</title>
+
+            <p>Pros:</p>
+
+            <list>
+                <list-item>Readable format (when using <id>plain</id>).</list-item>
+                <list-item>Very granular &mdash; specific databases or objects can be dumped and restored.</list-item>
+                <list-item>Generally smaller than a file-level backup because index data is not included.</list-item>
+            </list>
+
+            <p>Cons:</p>
+
+            <list>
+                <list-item>No point-in-time recovery.</list-item>
+                <list-item>Slow if many indexes and constraints need to be recreated.</list-item>
+                <list-item>No backup management (i.e., expiring of old backups).</list-item>
+            </list>
+
+            <block id="pg-doc-ref">
+                <block-variable-replace key="pg-doc-description">pg_dump</block-variable-replace>
+                <block-variable-replace key="pg-doc-link">https://www.postgresql.org/docs/9.6/static/app-pgdump.html</block-variable-replace>
+            </block>
+
+            <block id="build-doc-at">
+                <block-variable-replace key="doc-require">/pg-dump/intro</block-variable-replace>
+            </block>
+        </section>
+
+        <section id="usage">
+            <title>Usage</title>
+
+            <section id="dump-data">
+                <title>Dumping data</title>
+
+                <p><file>pg_dump</file> can be used to dump an entire cluster.  This is the simplest way to backup a database using the core utilities.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Dump entire cluster</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgdumpall]}</exe-cmd>
+                        <exe-highlight>\\connect|CREATE DATABASE|CREATE TABLE|COPY</exe-highlight>
+                    </execute>
+                </execute-list>
+
+                <p><file>pg_dump</file> can be used to dump a single database.  The ability to do logical data dumps is the primary strength of <file>pg_dump</file>.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Dump <proper>test1</proper> database</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgdump]} test1</exe-cmd>
+                        <exe-highlight>CREATE TABLE|COPY</exe-highlight>
+                    </execute>
+                </execute-list>
+
+                <p>It is also possible to dump a single object with <file>pg_dump</file>.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Dump <proper>detail</proper> table</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgdump]} -t widget_detail test1 </exe-cmd>
+                        <exe-highlight>CREATE TABLE|COPY</exe-highlight>
+                    </execute>
+                </execute-list>
+
+                <p>Or even just the data for a single object.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Dump <proper>detail</proper> table</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgdump]} -a -t widget_detail test1 </exe-cmd>
+                        <exe-highlight>CREATE TABLE|COPY</exe-highlight>
+                    </execute>
+                </execute-list>
+
+                <p>There are literally a ton of options.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title><file>pg_dump</file> options (some interesting options highlighted)</title>
+
+                    <execute user="postgres" show="y" filter="n">
+                        <exe-cmd>{[pg-pgdump]} --help</exe-cmd>
+                        <exe-highlight>\-\-schema-only|\-\-exclude-table|\-\-table|\-\-inserts|\-\-data-only</exe-highlight>
+                    </execute>
+                </execute-list>
+            </section>
+
+            <section id="restore-data">
+                <title>Restoring data</title>
+
+                <p>The power of <proper>pg_dump</proper> is the ability to dump and restore specific parts of a cluster.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Dump <proper>test1</proper> database</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>bash -c '{[pg-pgdump]} test1 > {[pg-backup-dir]}/db-test1.dump'</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Restore the dump to the test2 database</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>psql -c 'create database test2'</exe-cmd>
+                    </execute>
+                    <execute user="postgres" show="y">
+                        <exe-cmd>psql -f {[pg-backup-dir]}/db-test1.dump test2</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Query test2 database to demonstrate success</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>psql -c 'select * from widget' test2</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <p>Unfortunately, <proper>psql</proper> is not very concerned with errors by default.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Run again to show errors</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>psql -f {[pg-backup-dir]}/db-test1.dump test2</exe-cmd>
+                        <exe-cmd-extra>2>&amp;1</exe-cmd-extra>
+                        <exe-highlight>ERROR</exe-highlight>
+                    </execute>
+                </execute-list>
+
+                <p>But it is possible to fix this with some <proper>sed</proper> magic.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Force <proper>psql</proper> to exit on first error</title>
+
+                    <execute user="postgres" show="y" err-expect="3">
+                        <exe-cmd>
+                            bash -c '
+                                cat {[pg-backup-dir]}/db-test1.dump |
+                                sed -e "1s/^/\\\\set QUIET on\n\\\\set ON_ERROR_STOP on\nbegin transaction;\n/" -e "\$acommit;\n" |
+                                psql test2'
+                        </exe-cmd>
+                        <exe-cmd-extra>2>&amp;1</exe-cmd-extra>
+                        <exe-highlight>ERROR</exe-highlight>
+                    </execute>
+                </execute-list>
+            </section>
+        </section>
+    </section>
+
+    <!-- ======================================================================================================================= -->
+    <section id="pg-basebackup" depend="/setup">
+        <title>pg_basebackup</title>
+
+        <section id="intro">
+            <title>Introduction</title>
+
+            <p><proper>pg_basebackup</proper> is a core tool that performs file-level backups of a <postgres/> cluster.</p>
+
+            <p>Pros:</p>
+
+            <list>
+                <list-item>Allows point-in-time recovery.</list-item>
+                <list-item>Indexes do not need to be recreated.</list-item>
+            </list>
+
+            <p>Cons:</p>
+
+            <list>
+                <list-item>Single-threaded.</list-item>
+                <list-item>Not granular &amp;mdash; the entire cluster must be backed up.</list-item>
+                <list-item>No archive command for WAL generated in between backups (may use <file>pg_receive_xlog</file>).</list-item>
+                <list-item>No backup or WAL management (i.e., expiring of old backups and WAL).</list-item>
+            </list>
+
+            <block id="pg-doc-ref">
+                <block-variable-replace key="pg-doc-description">pg_basebackup</block-variable-replace>
+                <block-variable-replace key="pg-doc-link">https://www.postgresql.org/docs/9.6/static/app-pgbasebackup.html</block-variable-replace>
+            </block>
+
+            <block id="build-doc-at">
+                <block-variable-replace key="doc-require">/pg-basebackup/intro</block-variable-replace>
+            </block>
+        </section>
+
+        <section id="usage">
+            <title>Usage</title>
+
+            <section id="create-base-backup">
+                <title>Create a Base Backup</title>
+
+                <p><file>pg_basebackup</file> always makes a backup of the entire cluster.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Enable replication for <id>postgres</id> user</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>bash -c 'echo "local replication postgres peer" >> {[pg-hba-file]}'</exe-cmd>
+                    </execute>
+                    <execute user="root">
+                        <exe-cmd>{[pg-cluster-reload]}</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Backup entire cluster</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgbasebackup]} --checkpoint=fast -D {[pg-backup-dir]}/backup1</exe-cmd>
+                        <exe-cmd-extra>2>&amp;1</exe-cmd-extra>
+                    </execute>
+                </execute-list>
+
+                <p><file>pg_basebackup</file> does not copy WAL to the backup directory by default.  Checking the <path>pg_xlog</path> directory demonstrates that no WAL was copied.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Check for WAL in backup <path>pg_xlog</path> directory</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>ls -lah {[pg-backup-dir]}/backup1/pg_xlog</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <p>Try again using the option to automatically copy WAL.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Backup entire cluster with WAL</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>rm -rf {[pg-backup-dir]}/backup1</exe-cmd>
+                    </execute>
+                    <execute user="postgres" show="y">
+                        <exe-cmd>{[pg-pgbasebackup]} --checkpoint=fast -X stream -D {[pg-backup-dir]}/backup1</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <p>Now the WAL required to make the backup consistent is present.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Check for WAL in backup <path>pg_xlog</path> directory</title>
+
+                    <execute user="postgres" show="y">
+                        <exe-cmd>ls -lah {[pg-backup-dir]}/backup1/pg_xlog</exe-cmd>
+                    </execute>
+                </execute-list>
+            </section>
+
+            <section id="restore-base-backup">
+                <title>Restore a Base Backup</title>
+
+                <p><proper>pg_basebackup</proper> does not have a restore command so the simplest way to restore a base backup is to replace the existing data directory.</p>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Stop <postgres/></title>
+
+                    <execute user="root">
+                        <exe-cmd>{[pg-cluster-stop]}</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Move current <id>PDATA</id> to a new directory</title>
+
+                    <execute user="root">
+                        <exe-cmd>mv {[pg-data-dir]} {[pg-data-dir]}.save</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Copy base backup to <id>PDATA</id> and fix permissions</title>
+
+                    <execute user="root">
+                        <exe-cmd>cp -r {[pg-backup-dir]}/backup1 {[pg-data-dir]}</exe-cmd>
+                    </execute>
+                    <execute user="root">
+                        <exe-cmd>chown -R postgres:postgres {[pg-data-dir]}</exe-cmd>
+                    </execute>
+                    <execute user="root">
+                        <exe-cmd>chmod -R u+r,u+w,g=,o= {[pg-data-dir]}</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Start <postgres/></title>
+
+                    <execute user="root" show="n">
+                        <exe-cmd>rm -f {[pg-log-file]}</exe-cmd>
+                    </execute>
+                    <execute user="root">
+                        <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+                    </execute>
+                </execute-list>
+
+                <execute-list host="{[host-db-primary]}">
+                    <title>Check the <postgres/> log to demonstrate that recovery was successful</title>
+
+                    <execute user="postgres">
+                        <exe-cmd>cat {[pg-log-file]}</exe-cmd>
+                        <exe-highlight>database system was interrupted|consistent recovery state reached at|database system is ready to accept connections</exe-highlight>
+                    </execute>
+                </execute-list>
+            </section>
+        </section>
+    </section>
+
+    <!-- ======================================================================================================================= -->
+    <section id="pgbackrest" depend="/setup">
+        <title><backrest/></title>
+
+        <section id="introduction">
+            <title>Introduction</title>
+
+            <p><backrest/> is an alternative to the core utilities that uses the low-level backup method to produce a backup similar to <proper>pg_basebackup</proper>.  Other tools of this type include <link url="http://www.pgbarman.org/">Barman</link>, <link url="https://github.com/wal-e/wal-e">WAL-E</link>/<link url="https://github.com/wal-g/wal-g">WAL-G</link>, <link url="https://github.com/omniti-labs/omnipitr">OmniPITR</link>, <link url="https://github.com/ohmu/pghoard">PGHoard</link>, and <link url="https://github.com/postgrespro/pg_probackup">pg_probackup</link>.</p>
+
+            <p><backrest/> includes most of the important features of the other tools, though each has its specialties.</p>
+
+            <p>Pros:</p>
+
+            <list>
+                <list-item>Allows point-in-time recovery.</list-item>
+                <list-item>Indexes do not need to be recreated.</list-item>
+                <list-item>Built-in archive command.</list-item>
+                <list-item>Built-in backup and WAL management.</list-item>
+                <list-item>Multi-threaded.</list-item>
+            </list>
+
+            <p>Cons:</p>
+
+            <list>
+                <list-item>Not distributed with <postgres/>.</list-item>
+            </list>
+
+            <block id="pg-doc-ref">
+                <block-variable-replace key="pg-doc-description">low-level backups</block-variable-replace>
+                <block-variable-replace key="pg-doc-link">https://www.postgresql.org/docs/9.6/static/continuous-archiving.html</block-variable-replace>
+            </block>
+
+            <p>More information about <backrest/> can be found at <link url="http://www.pgbackrest.org">the website</link>.</p>
+
+            <block id="build-doc-at">
+                <block-variable-replace key="doc-require">/pgbackrest/intro</block-variable-replace>
+            </block>
+        </section>
+
+        <section id="install">
+            <title>Installation</title>
+
+            <p><backrest/> can be installed from <link url="https://yum.postgresql.org/">yum.postgresql.org</link> using the same repository as <postgres/>.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Install <backrest/></title>
+
+                <!-- !!! Enable this when there is internet -->
+                <!-- <execute user="root">
+                    <exe-cmd>yum install pgbackrest</exe-cmd>
+                    <exe-cmd-extra>-y</exe-cmd-extra>
+                </execute> -->
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest</exe-cmd>
+                </execute>
+            </execute-list>
+        </section>
+
+        <section id="setup">
+            <title>Setup</title>
+
+            <backrest-config host="{[host-db-primary]}" file="{[br-config-file]}">
+                <title>Configure the <postgres/> cluster data directory and repository path</title>
+
+                <backrest-config-option section="global" key="log-level-stderr">off</backrest-config-option>
+                <backrest-config-option section="global" key="log-timestamp">n</backrest-config-option>
+
+                <backrest-config-option section="global" key="repo-path">{[br-repo-dir]}</backrest-config-option>
+                <backrest-config-option section="global" key="start-fast">y</backrest-config-option>
+
+                <backrest-config-option section="{[br-stanza]}" key="db-path">{[pg-data-dir]}</backrest-config-option>
+            </backrest-config>
+
+            <postgres-config host="{[host-db-primary]}" file="{[pg-config-file]}">
+                <title>Configure <postgres/></title>
+
+                <postgres-config-option key="archive_command">'pgbackrest {[dash]}-stanza={[br-stanza]} archive-push %p'</postgres-config-option>
+                <postgres-config-option key="archive_mode">on</postgres-config-option>
+            </postgres-config>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Restart <postgres/> to enable WAL archiving</title>
+
+                <execute user="postgres" show="y">
+                    <exe-cmd>bash -c 'echo "local replication postgres peer" >> {[pg-hba-file]}'</exe-cmd>
+                </execute>
+                <execute user="root">
+                    <exe-cmd>{[pg-cluster-restart]}</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Create the <proper>{[br-stanza]}</proper> stanza</title>
+
+                <execute user="postgres" show="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} stanza-create</exe-cmd>
+                </execute>
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} info</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Check that WAL archiving configured</title>
+
+                <execute user="postgres" show="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} check</exe-cmd>
+                </execute>
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} info</exe-cmd>
+                </execute>
+            </execute-list>
+        </section>
+
+        <section id="backup">
+            <title>Backup</title>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Perform first full backup</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --log-level-console=info backup</exe-cmd>
+                    <exe-highlight>WARN|backup start archive|full backup size|new backup label</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <p>The first backup must be full so <backrest/> will change the backup type if necessary.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Perform differential backup</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --type=diff backup</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Display backup info</title>
+
+                <execute user="postgres" output="y" filter="n">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} info</exe-cmd>
+                    <exe-highlight>full backup|diff backup</exe-highlight>
+                </execute>
+            </execute-list>
+        </section>
+
+        <section id="retention">
+            <title>Retention</title>
+
+            <backrest-config host="{[host-db-primary]}" file="{[br-config-file]}">
+                <title>Configure backup retention</title>
+
+                <backrest-config-option section="global" key="retention-full">2</backrest-config-option>
+                <backrest-config-option section="global" key="retention-diff">2</backrest-config-option>
+            </backrest-config>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Perform second full backup</title>
+
+                <execute user="postgres">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --type=full backup</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Perform third full backup and check that the first full backup has expired</title>
+
+                <execute user="postgres">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --type=full backup</exe-cmd>
+                </execute>
+                <execute user="postgres" output="y" filter="n">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} info</exe-cmd>
+                    <exe-highlight>full backup|diff backup</exe-highlight>
+                </execute>
+            </execute-list>
+        </section>
+
+        <section id="restore" depend="backup">
+            <title>Restore</title>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Attempt a restore</title>
+
+                <execute user="postgres" err-expect="38">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --delta restore</exe-cmd>
+                    <exe-highlight>ERROR</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <p>Why the failure?  <postgres/> must be stopped before a restore can be performed.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Stop <postgres/></title>
+
+                <execute user="root">
+                    <exe-cmd>{[pg-cluster-stop]}</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Perform restore</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} --delta --log-level-console=detail restore</exe-cmd>
+                    <exe-highlight>remove invalid|remove file|restore global|recovery.conf</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <p><backrest/> automatically create the <file>recovery.conf</file> required to fetch WAL from the archive</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Show <file>recovery.conf</file> file</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>cat {[pg-recovery-file]}</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <p>During the backup <postgres/> create a <file>backup_label</file> which defines the checkpoint where WAL replay must start.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Show <file>backup_label</file> file</title>
+
+                <execute user="postgres" output="y" filter="n">
+                    <exe-cmd>cat {[pg-data-dir]}/backup_label</exe-cmd>
+                    <exe-highlight>CHECKPOINT LOCATION</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Start <postgres/></title>
+
+                <execute user="root" show="n">
+                    <exe-cmd>rm -f {[pg-log-file]}</exe-cmd>
+                </execute>
+                <execute user="root">
+                    <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+                </execute>
+                <execute user="root" show="n">
+                    <exe-cmd>{[pg-cluster-wait]}</exe-cmd>
+                </execute>
+            </execute-list>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Check the <postgres/> log to demonstrate that recovery was successful</title>
+
+                <execute user="postgres" output="y">
+                    <exe-cmd>cat {[pg-log-file]}</exe-cmd>
+                    <exe-highlight>database system was interrupted|consistent recovery state reached at|database system is ready to accept connections|selected new timeline</exe-highlight>
+                </execute>
+            </execute-list>
+
+            <p>Note that a new timeline has been started.  This happens whenever a cluster in recovery is promoted.  The new timeline prevents duplicate WAL in the repo when a recovery does not play all the way to the end of the WAL stream.</p>
+
+            <execute-list host="{[host-db-primary]}">
+                <title>Check repository for the new timeline</title>
+
+                <execute user="postgres">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} check</exe-cmd>
+                </execute>
+                <execute user="postgres" output="y">
+                    <exe-cmd>pgbackrest --stanza={[br-stanza]} info</exe-cmd>
+                    <exe-highlight>wal archive min</exe-highlight>
+                </execute>
+            </execute-list>
+        </section>
+    </section>
+
+    <!-- SECTION => PITR -->
+    <section id="pitr" depend="/pgbackrest/setup">
+        <title>Point-in-Time Recovery</title>
+
+        <p>The <link section="/pgbackrest/restore">Restore</link> performed default recovery, which is to play all the way to the end of the WAL stream.  In the case of a hardware failure this is usually the best choice but for data corruption scenarios (whether machine or human in origin) Point-in-Time Recovery (PITR) is often more appropriate.</p>
+
+        <p>Point-in-Time Recovery (PITR) allows the WAL to be played from the last backup to a specified time, transaction id, or recovery point.  For common recovery scenarios time-based recovery is arguably the most useful.  A typical recovery scenario is to restore a table that was accidentally dropped or data that was accidentally deleted.  Recovering a dropped table is more dramatic so that's the example given here but deleted data would be recovered in exactly the same way.</p>
+
+        <block id="build-doc-at">
+            <block-variable-replace key="doc-require">/pgbackrest/setup</block-variable-replace>
+        </block>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Backup the {[br-stanza]} cluster and create a table with very important data</title>
+
+            <execute>
+                <exe-cmd>pgbackrest {[dash]}-stanza={[br-stanza]} --type=diff backup</exe-cmd>
+            </execute>
+
+            <execute output="y">
+                <exe-cmd>
+                    psql -c "begin;
+                             create table important_table (message text);
+                             insert into important_table values ('{[test-table-data]}');
+                             commit;
+                             select * from important_table;"
+                </exe-cmd>
+                <exe-highlight>{[test-table-data]}</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>It is important to represent the time as reckoned by <postgres/> and to include timezone offsets.  This reduces the possibility of unintended timezone conversions and an unexpected recovery result.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Get the time from <postgres/></title>
+
+            <execute output="y" filter="n" variable-key="time-recovery-timestamp">
+                <exe-cmd>
+                    psql -Atc "select current_timestamp"
+                </exe-cmd>
+            </execute>
+        </execute-list>
+
+        <p>Now that the time has been recorded the table is dropped.  In practice finding the exact time that the table was dropped is a lot harder than in this example.  It may not be possible to find the exact time, but some forensic work should be able to get you close.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Drop the important table</title>
+
+            <execute output="y" err-expect="1">
+                <exe-cmd>psql -c "begin;
+                                  drop table important_table;
+                                  commit;
+                                  select * from important_table;"</exe-cmd>
+                <exe-highlight>does not exist</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>Now the restore can be performed with time-based recovery to bring back the missing table.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Stop <postgres/>, restore the {[br-stanza]} cluster to <id>{[time-recovery-timestamp]}</id>, and display <file>recovery.conf</file></title>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-stop]}</exe-cmd>
+            </execute>
+
+            <execute>
+                <exe-cmd>pgbackrest {[dash]}-stanza={[br-stanza]} {[dash]}-delta
+                    {[dash]}-type=time "{[dash]}-target={[time-recovery-timestamp]}" restore</exe-cmd>
+            </execute>
+
+            <execute user="root" show="n">
+                <exe-cmd>rm {[pg-log-file]}</exe-cmd>
+            </execute>
+
+            <execute output="y">
+                <exe-cmd>cat {[pg-recovery-file]}</exe-cmd>
+                <exe-highlight>recovery_target_time</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>The <file>recovery.conf</file> file has been automatically generated by <backrest/> so <postgres/> can be started immediately. Once <postgres/> has finished recovery the table will exist again and can be queried.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Start <postgres/> and check that the important table exists</title>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+            </execute>
+
+            <execute show="n">
+                <exe-cmd>{[pg-cluster-wait]}</exe-cmd>
+            </execute>
+
+            <execute output="y">
+                <exe-cmd>psql -c "select * from important_table"</exe-cmd>
+                <exe-highlight>{[test-table-data]}</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>The <postgres/> log also contains valuable information.  It will indicate the time and transaction where the recovery stopped and also give the time of the last transaction to be applied.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Examine the <postgres/> log output</title>
+
+            <execute output="y">
+                <exe-cmd>cat {[pg-log-file]}</exe-cmd>
+                <exe-highlight>recovery stopping before|last completed transaction|starting point-in-time recovery</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>This example was rigged to give the correct result.  If a backup after the required time is chosen then <postgres/> will not be able to recover the lost table. <postgres/> can only play forward, not backward.  To demonstrate this the important table must be dropped (again).</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Drop the important table (again)</title>
+
+            <execute output="y" err-expect="1">
+                <exe-cmd>psql -c "begin;
+                                  drop table important_table;
+                                  commit;
+                                  select * from important_table;"</exe-cmd>
+                <exe-highlight>does not exist</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>Now take a new backup and attempt recovery from the new backup.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Perform a backup then attempt recovery from that backup</title>
+
+            <execute show="n" variable-key="backup-last">
+                <exe-cmd>{[cmd-backup-last]}</exe-cmd>
+            </execute>
+
+            <execute>
+                <exe-cmd>pgbackrest {[dash]}-stanza={[br-stanza]} {[dash]}-type=incr backup</exe-cmd>
+            </execute>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-stop]}</exe-cmd>
+            </execute>
+
+            <execute>
+                <exe-cmd>pgbackrest {[dash]}-stanza={[br-stanza]} {[dash]}-delta
+                     {[dash]}-type=time "{[dash]}-target={[time-recovery-timestamp]}" restore</exe-cmd>
+            </execute>
+
+            <execute user="root" show="n">
+                <exe-cmd>rm {[pg-log-file]}</exe-cmd>
+            </execute>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+            </execute>
+
+            <execute show="n">
+                <exe-cmd>{[pg-cluster-wait]}</exe-cmd>
+            </execute>
+
+            <execute output="y" err-expect="1">
+                <exe-cmd>psql -c "select * from important_table"</exe-cmd>
+                <exe-highlight>does not exist</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>Looking at the log output it's not obvious that recovery failed to restore the table.  The key is to look for the presence of the <quote>recovery stopping before...</quote> and <quote>last completed transaction...</quote> log messages.  If they are not present then the recovery to the specified point-in-time was not successful.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Examine the <postgres/> log output to discover the recovery was not successful</title>
+
+            <execute output="y">
+                <exe-cmd>cat {[pg-log-file]}</exe-cmd>
+                <exe-highlight>starting point-in-time recovery|consistent recovery state reached</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>Using an earlier backup will allow <postgres/> to play forward to the correct time.  The <cmd>info</cmd> command can be used to find the next to last backup.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Get backup info for the {[br-stanza]} cluster</title>
+
+            <execute filter="n" output="y">
+                <exe-cmd>pgbackrest info</exe-cmd>
+                <exe-highlight>{[backup-last]}</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>The default behavior for restore is to use the last backup but an earlier backup can be specified with the <br-option>{[dash]}-set</br-option> option.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Stop <postgres/>, restore from the selected backup, and start <postgres/></title>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-stop]}</exe-cmd>
+            </execute>
+
+            <execute>
+                <exe-cmd>
+                    pgbackrest {[dash]}-stanza={[br-stanza]} {[dash]}-delta
+                        {[dash]}-type=time "{[dash]}-target={[time-recovery-timestamp]}"
+                        {[dash]}-set={[backup-last]} restore
+                </exe-cmd>
+            </execute>
+
+            <execute user="root" show="n">
+                <exe-cmd>rm {[pg-log-file]}</exe-cmd>
+            </execute>
+
+            <execute user="root">
+                <exe-cmd>{[pg-cluster-start]}</exe-cmd>
+            </execute>
+
+            <execute show="n">
+                <exe-cmd>{[pg-cluster-wait]}</exe-cmd>
+            </execute>
+
+            <execute output="y">
+                <exe-cmd>psql -c "select * from important_table"</exe-cmd>
+                <exe-highlight>{[test-table-data]}</exe-highlight>
+            </execute>
+        </execute-list>
+
+        <p>Now the the log output will contain the expected <quote>recovery stopping before...</quote> and <quote>last completed transaction...</quote> messages showing that the recovery was successful.</p>
+
+        <execute-list host="{[host-db-primary]}">
+            <title>Examine the <postgres/> log output for log messages indicating success</title>
+
+            <execute output="y">
+                <exe-cmd>cat {[pg-log-file]}</exe-cmd>
+                <exe-highlight>recovery stopping before|last completed transaction|starting point-in-time recovery</exe-highlight>
+            </execute>
+        </execute-list>
     </section>
 </doc>

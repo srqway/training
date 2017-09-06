@@ -1,0 +1,2497 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Practical PostgreSQL Backup &amp; Restore</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8"></meta>
+  <style type="text/css">
+/*******************************************************************************
+Html and body
+*******************************************************************************/
+html
+{
+    background-color: #f8f8f8;
+    font-family: Avenir, Corbel, sans-serif;
+    font-size: 12pt;
+    margin-top: 8px;
+    margin-left: 1%;
+    margin-right: 1%;
+    width: 98%;
+}
+
+body
+{
+    margin: 0px auto;
+    padding: 0px;
+    width: 100%;
+    text-align: justify;
+}
+
+@media (min-width: 1000px)
+{
+    body
+    {
+        width: 1000px;
+    }
+}
+
+/*******************************************************************************
+Link default styling
+*******************************************************************************/
+a:link, a:visited, a:hover, a:active
+{
+    text-decoration: underline;
+    color: black;
+}
+
+/*******************************************************************************
+Header
+*******************************************************************************/
+.page-header
+{
+    width:100%;
+    text-align:center;
+}
+
+.page-header-title
+{
+    font-size: xx-large;
+    font-weight: bolder;
+}
+
+.page-header-subtitle
+{
+    position: relative;
+    top: -.25em;
+    font-size: large;
+    font-weight: bold;
+}
+
+.page-header-logo
+{
+    float: left;
+    margin-top: 0.3em;
+}
+
+.page-header-logo > img
+{
+    width: 69px;
+    height: 69px;
+}
+
+/*******************************************************************************
+Menu
+*******************************************************************************/
+/*.page-menu*/
+
+.menu-body
+{
+    text-align: center;
+}
+
+.menu
+{
+    white-space: nowrap;
+    display: inline;
+    margin-left: .5em;
+    font-size: 13pt;
+}
+
+.menu:first-of-type
+{
+    margin-left: 0px;
+}
+
+.menu:before
+{
+    content: "[";
+}
+
+.menu:after
+{
+    content: "]";
+}
+
+/*.menu-link*/
+
+a.menu-link:link, a.menu-link:visited, a.menu-link:active
+{
+    text-decoration: none;
+}
+
+a.menu-link:hover
+{
+    text-decoration: underline;
+}
+
+/*******************************************************************************
+Table of Contents
+*******************************************************************************/
+.page-toc-body
+{
+    margin-top: .25em;
+    margin-bottom: 2em;
+}
+
+.section1-toc:first-of-type
+{
+    margin-top: 0;
+}
+
+.section1-toc
+{
+    margin-top: .5em;
+}
+
+.section1-toc-number
+{
+    display: inline;
+    font-size: 14pt;
+    margin-right: .5em;
+}
+
+.section1-toc-title
+{
+    display: inline;
+    font-size: 14pt;
+}
+
+.section2-toc
+{
+    margin-left: 1.8em;
+}
+
+.section2-toc-number
+{
+    display: inline;
+    margin-right: .5em;
+}
+
+.section2-toc-title
+{
+    display: inline;
+}
+
+.section3-toc
+{
+    margin-left: 2.3em;
+}
+
+.section3-toc-number
+{
+    display: inline;
+    margin-right: .5em;
+}
+
+.section3-toc-title
+{
+    display: inline;
+}
+
+/*******************************************************************************
+Section
+*******************************************************************************/
+.section1
+{
+    margin-top: 2.5em;
+}
+
+.section1:first-of-type
+{
+    margin-top: 1em;
+}
+
+.section2, .section3
+{
+    margin-top: 1em;
+}
+
+.section1-header, .section2-header, .section3-header, .page-toc-header
+{
+    margin-top: .5em;
+    font-weight: 500;
+}
+
+.section1-header, .page-toc-header
+{
+    border-radius: 3px;
+    background-color: #396a93;
+    color: #f8f8f8;
+    font-size: 22pt;
+    padding-left: .5em;
+    margin-bottom: .5em;
+}
+
+.section1-number, .section2-number, .section3-number
+{
+    display: inline;
+    margin-right: .5em;
+}
+
+.section1-title, .section2-title, .section3-title
+{
+    display: inline;
+}
+
+.section1-subtitle, .section2-subtitle, .section3-subtitle
+{
+    font-weight: bold;
+    font-size: 16pt;
+    margin-top: .5em;
+}
+
+.section1-subsubtitle, .section2-subsubtitle, .section3-subsubtitle
+{
+    font-style: italic;
+    font-size: 14pt;
+    margin-top: 0px;
+}
+
+.section1-subtitle
+{
+    font-size: 16pt;
+}
+
+.section1-subsubtitle
+{
+    font-size: 14pt;
+}
+
+.section2
+{
+    margin-top: 1em;
+}
+
+.section2-header
+{
+    border-bottom: 2px #396a93 solid;
+    color: #396a93;
+    font-size: 16pt;
+}
+
+.section2-subtitle, .section2-subtitle
+{
+    font-size: 14pt;
+}
+
+.section2-subsubtitle, .section3-subsubtitle
+{
+    font-size: 12pt;
+}
+
+.section3
+{
+    margin-left: 1em;
+    margin-top: 1em;
+}
+
+.section3:first-of-type
+{
+    border-top: none;
+}
+
+.section3-header
+{
+    display: inline;
+    font-size: 14pt;
+    color: #396a93;
+    border-bottom: 1px #396a93 solid;
+}
+
+.section-intro
+{
+    margin-top: .75em;
+}
+
+/*.section-body*/
+
+/*******************************************************************************
+Config, Execute, Code Block, Release Elements
+*******************************************************************************/
+.section-body-text
+{
+    margin-top: 1em;
+}
+
+.section-body-text:first-of-type
+{
+    margin-top: .75em;
+}
+
+.execute,
+.config,
+.code-block
+{
+    /*white-space: nowrap;*/
+    margin-left: 1em;
+    margin-right: 1em;
+    margin-top: .8em;
+    margin-bottom: 1em;
+}
+
+.execute-title,
+.config-title
+{
+    font-size: 11pt;
+    margin-bottom: .125em;
+}
+
+.execute-body,
+.config-body,
+.code-block
+{
+    border-radius: 3px;
+    background-color: #444444;
+    font-family: monospace;
+    unicode-bidi: embed;
+    color: #f8f8f8;
+    /*color: white;*/
+    font-size: 10pt;
+}
+
+.execute-body-cmd,
+.execute-body-output, .execute-body-output-highlight,
+.config-body-title,
+.code-block
+{
+    padding-left: .5em;
+    padding-right: .5em;
+}
+
+/* Would rather not use pre at all, but Firefox won't copy code samples correctly without it */
+pre
+{
+    margin: 0px;
+    padding: 0px;
+    white-space: pre-wrap;
+}
+
+.execute-body-cmd:before
+{
+    content: "$ ";
+}
+
+.execute-body-cmd:first-of-type, .execute-body-output,
+.config-body-title, .config-body-output,
+.code-block,
+.execute-body-output-highlight, .execute-body-output-highlight-error
+{
+    padding-top: .25em;
+}
+
+.execute-body-cmd, .execute-body-output,
+.config-body-title, .config-body-output,
+.code-block,
+.execute-body-output-highlight, .execute-body-output-highlight-error
+{
+    padding-bottom: .25em;
+}
+
+.execute-body-output,
+.config-body-output,
+.code-block
+{
+    border-radius: 3px;
+    background-color: #606060;
+}
+
+.execute-body-output-highlight
+{
+    border-radius: 3px;
+    background-color: #1e7b1e;
+}
+
+.execute-body-output-highlight-error
+{
+    border-radius: 3px;
+    background-color: #a32929;
+}
+
+.execute-body-output, .execute-body-output-highlight, .execute-body-output-highlight-error,
+.config-body-output
+{
+    padding-left: 1.75em;
+}
+
+/*.code-block*/
+
+/*.section-body-execute-output*/
+
+/*******************************************************************************
+Lists
+*******************************************************************************/
+ul.list-unordered
+{
+    margin-top: .5em;
+}
+
+li.list-unordered
+{
+    margin-top: .5em;
+}
+
+/*******************************************************************************
+Keywords
+*******************************************************************************/
+.backrest, .cmd, .postgres, .host, .proper
+{
+    font-weight: 500;
+}
+
+.path, .br-option, .br-setting, .pg-option, .pg-setting, .id, .user, .file, .path
+{
+    unicode-bidi: embed;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+/*******************************************************************************
+Footer
+*******************************************************************************/
+.page-footer
+{
+    border-top: 2px #cccccc solid;
+    margin-top: 1em;
+    padding-top: .25em;
+    font-size: x-small;
+    white-space: nowrap;
+    text-align: center;
+}
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="page-header-title">
+Practical PostgreSQL Backup & Restore
+    </div>
+  </div>
+  <div class="page-toc">
+    <div class="page-toc-header">
+      <div class="page-toc-title">
+Table of Contents
+      </div>
+    </div>
+    <div class="page-toc-body">
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+1
+        </div>
+        <div class="section1-toc-title">
+          <a href="#introduction">
+Introduction
+          </a>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+2
+        </div>
+        <div class="section1-toc-title">
+          <a href="#consistency">
+How <span class="postgres">PostgreSQL</span> Maintains Consistency
+          </a>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+2.1
+          </div>
+          <div class="section2-toc-title">
+            <a href="#consistency/wal">
+Write Ahead Log (WAL)
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+2.2
+          </div>
+          <div class="section2-toc-title">
+            <a href="#consistency/checkpoint">
+Checkpoints
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+2.3
+          </div>
+          <div class="section2-toc-title">
+            <a href="#consistency/crash-recovery">
+Crash Recovery
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+3
+        </div>
+        <div class="section1-toc-title">
+          <a href="#setup">
+Setup
+          </a>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+3.1
+          </div>
+          <div class="section2-toc-title">
+            <a href="#setup/intro">
+Introduction
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+3.2
+          </div>
+          <div class="section2-toc-title">
+            <a href="#setup/setup-postgres">
+Setup <span class="postgres">PostgreSQL</span>
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+3.3
+          </div>
+          <div class="section2-toc-title">
+            <a href="#setup/sample-data">
+Sample Data
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+4
+        </div>
+        <div class="section1-toc-title">
+          <a href="#pg-dump">
+pg_dump
+          </a>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+4.1
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pg-dump/intro">
+Introduction
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+4.2
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pg-dump/usage">
+Usage
+            </a>
+          </div>
+          <div class="section3-toc">
+            <div class="section3-toc-number">
+4.2.1
+            </div>
+            <div class="section3-toc-title">
+              <a href="#pg-dump/usage/dump-data">
+Dumping data
+              </a>
+            </div>
+          </div>
+          <div class="section3-toc">
+            <div class="section3-toc-number">
+4.2.2
+            </div>
+            <div class="section3-toc-title">
+              <a href="#pg-dump/usage/restore-data">
+Restoring data
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+5
+        </div>
+        <div class="section1-toc-title">
+          <a href="#pg-basebackup">
+pg_basebackup
+          </a>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+5.1
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pg-basebackup/intro">
+Introduction
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+5.2
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pg-basebackup/usage">
+Usage
+            </a>
+          </div>
+          <div class="section3-toc">
+            <div class="section3-toc-number">
+5.2.1
+            </div>
+            <div class="section3-toc-title">
+              <a href="#pg-basebackup/usage/create-base-backup">
+Create a Base Backup
+              </a>
+            </div>
+          </div>
+          <div class="section3-toc">
+            <div class="section3-toc-number">
+5.2.2
+            </div>
+            <div class="section3-toc-title">
+              <a href="#pg-basebackup/usage/restore-base-backup">
+Restore a Base Backup
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+6
+        </div>
+        <div class="section1-toc-title">
+          <a href="#pgbackrest">
+<span class="backrest">pgBackRest</span>
+          </a>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.1
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/introduction">
+Introduction
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.2
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/install">
+Installation
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.3
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/setup">
+Setup
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.4
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/backup">
+Backup
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.5
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/retention">
+Retention
+            </a>
+          </div>
+        </div>
+        <div class="section2-toc">
+          <div class="section2-toc-number">
+6.6
+          </div>
+          <div class="section2-toc-title">
+            <a href="#pgbackrest/restore">
+Restore
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="section1-toc">
+        <div class="section1-toc-number">
+7
+        </div>
+        <div class="section1-toc-title">
+          <a href="#pitr">
+Point-in-Time Recovery
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="section1">
+      <a id="introduction"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+1
+        </div>
+        <div class="section1-title">
+Introduction
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section-body-text">
+The purpose of this document is to familiarize the user with the core backup tools that are distributed with <span class="postgres">PostgreSQL</span> as well as one third-party option, <span class="backrest">pgBackRest</span>.
+        </div>
+        <div class="section-body-text">
+Docker is used to simulate a realistic environment so that actual backup strategies can be demonstrated. To logon to any Docker container run:<br/>
+<br/>
+<span class="id">docker exec -it doc-&lt;hostname> bash</span><br/>
+<br/>
+Similarly, a command can be run directly without logging on:<br/>
+<br/>
+<span class="id">docker exec -it doc-&lt;hostname> &lt;cmd></span><br/>
+<br/>
+A command can be run as a specific user:<br/>
+<br/>
+<span class="id">docker exec -u postgres -it doc-&lt;hostname> &lt;cmd></span><br/>
+<br/>
+Pipes and redirection should be wrapped in a <span class="host">bash</span> command:<br/>
+<br/>
+<span class="id">docker exec -it doc-&lt;hostname> bash -c 'echo "test" > testfile'</span>
+        </div>
+        <div class="section-body-text">
+All commands are intended to be run as an unprivileged user that has sudo privileges for both the <span class="user">root</span> and <span class="user">postgres</span> users. It's also possible to run the commands directly as their respective users without modification and in that case the <span class="cmd">sudo</span> commands can be stripped off.
+        </div>
+        <div class="section-body-text">
+Each main section includes a command to bring the environment to a state where that section's commands can be run. Thus, if the environment gets into a bad state its possible to reset it without starting from the beginning.
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="consistency"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+2
+        </div>
+        <div class="section1-title">
+How <span class="postgres">PostgreSQL</span> Maintains Consistency
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section2">
+          <a id="consistency/wal"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+2.1
+            </div>
+            <div class="section2-title">
+Write Ahead Log (WAL)
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+WAL is the mechanism that <span class="postgres">PostgreSQL</span> uses to ensure that no committed changes are lost. Transactions are written sequentially to the WAL and a transaction is considered to be committed when those writes are flushed to disk. Afterwards, a background process writes the changes into the main database cluster files (also known as the heap). In the event of a crash, the WAL is replayed to make the database consistent.
+            </div>
+            <div class="section-body-text">
+WAL is conceptually infinite but in practice is broken up into individual 16MB files called segments. WAL segments follow the naming convention <span class="id">0000000100000A1E000000FE</span> where the first 8 hexadecimal digits represent the timeline and the next 16 digits are the logical sequence number (LSN).
+            </div>
+            <div class="section-body-text">
+An exhaustive description of how WAL works can be found at <a href="http://www.interdb.jp/pg/pgsql09.html">The Internals of PostgreSQL (Chapter 9)</a>.
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="consistency/checkpoint"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+2.2
+            </div>
+            <div class="section2-title">
+Checkpoints
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+<span class="postgres">PostgreSQL</span> will periodically ensure that all data written to the WAL is flushed to disk. This is called a checkpoint. Checkpoints minimize the amount of WAL replay required after a crash and allows the database to reuse WAL segments applied before a checkpoint.
+            </div>
+            <div class="section-body-text">
+More information about checkpoints can be found in the <a href="https://www.postgresql.org/docs/9.6/static/wal-configuration.html">PostgreSQL Documentation</a>.
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="consistency/crash-recovery"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+2.3
+            </div>
+            <div class="section2-title">
+Crash Recovery
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+If <span class="postgres">PostgreSQL</span> crashes, is terminated, or the server goes down, crash recovery must be performed when <span class="postgres">PostgreSQL</span> restarts to ensure the database is consistent. <span class="postgres">PostgreSQL</span> simply replays all the WAL since the last checkpoint. Any transactions that were in progress when <span class="postgres">PostgreSQL</span> terminated will not be committed.
+            </div>
+            <div class="section-body-text">
+Backup recovery uses the same process except that WAL may need to be replayed from a checkpoint that is older than the last checkpoint. The <span class="file">backup_label</span> file lets <span class="postgres">PostgreSQL</span> know which checkpoint it should start recovery from.
+            </div>
+            <div class="section-body-text">
+Replication also uses this same process to replay transactions from the primary onto the standby.
+            </div>
+            <div class="section-body-text">
+WAL replay is the central mechanism for crash recovery, backup recovery, and replication. Understanding how WAL works is the key to understanding how <span class="postgres">PostgreSQL</span> achieves consistency.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="setup"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+3
+        </div>
+        <div class="section1-title">
+Setup
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section2">
+          <a id="setup/intro"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+3.1
+            </div>
+            <div class="section2-title">
+Introduction
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+Setup the test cluster and some sample data that will be used during the training.
+            </div>
+            <div class="section-body-text">
+<b>Start working at this point by running</b>:<br/>
+<br/>
+<span class="id">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;--include=backup-training --require=/setup/intro</span>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="setup/setup-postgres"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+3.2
+            </div>
+            <div class="section2-title">
+Setup <span class="postgres">PostgreSQL</span>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+Create a cluster and start it.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Create the test cluster
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres /usr/pgsql-9.6/bin/initdb -A peer -E UTF8 -k /var/lib/pgsql/9.6/data</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+By default <span class="postgres">PostgreSQL</span> will only accept local connections. The examples in this training will require connections from other servers so <span class="pg-option">listen_addresses</span> is configured to listen on all interfaces. This may not be appropriate for secure installations.
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Set <span class="pg-option">listen_addresses</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+listen_addresses = '*'
+                </div>
+              </div>
+            </div>
+            <div class="section-body-text">
+For training purposes the <span class="pg-option">log_line_prefix</span> setting will be minimally configured. This keeps the log output as brief as possible to better illustrate important information.
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Set <span class="pg-option">log_line_prefix</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+listen_addresses = '*'<br/>
+log_line_prefix = ''
+                </div>
+              </div>
+            </div>
+            <div class="section-body-text">
+By default <span class="postgres">PostgreSQL</span> includes the day of the week in the log filename. This makes automating the user guide a bit more complicated so the <span class="pg-option">log_filename</span> is set to a constant.
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Set <span class="pg-option">log_filename</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+listen_addresses = '*'<br/>
+log_filename = 'postgresql.log'<br/>
+log_line_prefix = ''
+                </div>
+              </div>
+            </div>
+            <div class="section-body-text">
+WAL senders are required for <span class="file">pg_basebackup</span> and replication so enable them.
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Set <span class="pg-option">max_wal_senders</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+listen_addresses = '*'<br/>
+log_filename = 'postgresql.log'<br/>
+log_line_prefix = ''<br/>
+max_wal_senders = 10
+                </div>
+              </div>
+            </div>
+            <div class="section-body-text">
+The WAL level must be set to replica.
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Set <span class="pg-option">wal_level</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+listen_addresses = '*'<br/>
+log_filename = 'postgresql.log'<br/>
+log_line_prefix = ''<br/>
+max_wal_senders = 10<br/>
+wal_level = replica
+                </div>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Start the test cluster
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="setup/sample-data"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+3.3
+            </div>
+            <div class="section2-title">
+Sample Data
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+Create a sample database to provide some data to backup up.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Show sample database script
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres cat /training/script/setup-db.sql</pre>
+                <pre class="execute-body-output">/***********************************************************************************************************************************
+Create TEST1 database and connect to it
+***********************************************************************************************************************************/
+create database test1;
+\c test1;
+
+begin;
+
+/***********************************************************************************************************************************
+WIDGET Table
+***********************************************************************************************************************************/</pre>
+                <pre class="execute-body-output-highlight">create table widget</pre>
+                <pre class="execute-body-output">(
+    id int not null,
+    name text not null,
+    constraint widget_pk primary key (id)
+);
+
+-- Sample data
+insert into widget (id, name) values (1, 'thingamabob');
+insert into widget (id, name) values (2, 'whatsawhosit');
+
+/***********************************************************************************************************************************
+WIDGET_DETAIL Table
+***********************************************************************************************************************************/</pre>
+                <pre class="execute-body-output-highlight">create table widget_detail</pre>
+                <pre class="execute-body-output">(
+    id int,
+    widget_id int not null
+        constraint widgetdetail_widgetid_fk references widget (id),
+    key text not null,
+    value text not null,
+    constraint widgetdetail_pk primary key (id),
+    constraint widgetdetail_key_id_unq unique (key, id)
+);
+
+-- Sample data
+insert into widget_detail (id, widget_id, key, value) values (100, 1, 'color', 'yellowish');
+insert into widget_detail (id, widget_id, key, value) values (101, 1, 'shape', 'squarish');
+insert into widget_detail (id, widget_id, key, value) values (200, 2, 'color', 'redish');
+insert into widget_detail (id, widget_id, key, value) values (201, 2, 'shape', 'blobish');
+
+commit;</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Create sample database
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres psql -f /training/script/setup-db.sql</pre>
+                <pre class="execute-body-output">CREATE DATABASE
+You are now connected to database "test1" as user "postgres".
+BEGIN
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+COMMIT</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="pg-dump"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+4
+        </div>
+        <div class="section1-title">
+pg_dump
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section2">
+          <a id="pg-dump/intro"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+4.1
+            </div>
+            <div class="section2-title">
+Introduction
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+Pros:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+Readable format (when using <span class="id">plain</span>).
+              </li>
+              <li class="list-unordered">
+Very granular specific databases or objects can be dumped and restored.
+              </li>
+              <li class="list-unordered">
+Generally smaller than a file-level backup because index data is not included.
+              </li>
+            </ul>
+            <div class="section-body-text">
+Cons:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+No point-in-time recovery.
+              </li>
+              <li class="list-unordered">
+Slow if many indexes and constraints need to be recreated.
+              </li>
+              <li class="list-unordered">
+No backup management (i.e., expiring of old backups).
+              </li>
+            </ul>
+            <div class="section-body-text">
+More information about pg_dump can be found in the <a href="https://www.postgresql.org/docs/9.6/static/app-pgdump.html">PostgreSQL Documentation</a>.
+            </div>
+            <div class="section-body-text">
+<b>Start working at this point by running</b>:<br/>
+<br/>
+<span class="id">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;--include=backup-training --require=/pg-dump/intro</span>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pg-dump/usage"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+4.2
+            </div>
+            <div class="section2-title">
+Usage
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section3">
+              <a id="pg-dump/usage/dump-data"></a>
+              <div class="section3-header">
+                <div class="section3-number">
+4.2.1
+                </div>
+                <div class="section3-title">
+Dumping data
+                </div>
+              </div>
+              <div class="section-body">
+                <div class="section-body-text">
+<span class="file">pg_dump</span> can be used to dump an entire cluster. This is the simplest way to backup a database using the core utilities.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Dump entire cluster
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_dumpall</pre>
+                    <pre class="execute-body-output">       [filtered 25 lines of output]
+REVOKE CONNECT,TEMPORARY ON DATABASE template1 FROM PUBLIC;
+GRANT CONNECT ON DATABASE template1 TO PUBLIC;</pre>
+                    <pre class="execute-body-output-highlight">CREATE DATABASE test1 WITH TEMPLATE = template0 OWNER = postgres;</pre>
+                    <pre class="execute-body-output">
+</pre>
+                    <pre class="execute-body-output-highlight">\connect postgres</pre>
+                    <pre class="execute-body-output">
+SET default_transaction_read_only = off;
+       [filtered 40 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">\connect template1</pre>
+                    <pre class="execute-body-output">
+SET default_transaction_read_only = off;
+       [filtered 40 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">\connect test1</pre>
+                    <pre class="execute-body-output">
+SET default_transaction_read_only = off;
+       [filtered 39 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">CREATE TABLE widget (</pre>
+                    <pre class="execute-body-output">    id integer NOT NULL,
+    name text NOT NULL
+       [filtered 7 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">CREATE TABLE widget_detail (</pre>
+                    <pre class="execute-body-output">    id integer NOT NULL,
+    widget_id integer NOT NULL,
+       [filtered 9 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget (id, name) FROM stdin;</pre>
+                    <pre class="execute-body-output">1	thingamabob
+2	whatsawhosit
+       [filtered 5 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget_detail (id, widget_id, key, value) FROM stdin;</pre>
+                    <pre class="execute-body-output">100	1	color	yellowish
+101	1	shape	squarish
+       [filtered 43 lines of output]</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+<span class="file">pg_dump</span> can be used to dump a single database. The ability to do logical data dumps is the primary strength of <span class="file">pg_dump</span>.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Dump <span class="host">test1</span> database
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_dump test1</pre>
+                    <pre class="execute-body-output">       [filtered 38 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">CREATE TABLE widget (</pre>
+                    <pre class="execute-body-output">    id integer NOT NULL,
+    name text NOT NULL
+       [filtered 7 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">CREATE TABLE widget_detail (</pre>
+                    <pre class="execute-body-output">    id integer NOT NULL,
+    widget_id integer NOT NULL,
+       [filtered 9 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget (id, name) FROM stdin;</pre>
+                    <pre class="execute-body-output">1	thingamabob
+2	whatsawhosit
+       [filtered 5 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget_detail (id, widget_id, key, value) FROM stdin;</pre>
+                    <pre class="execute-body-output">100	1	color	yellowish
+101	1	shape	squarish
+       [filtered 39 lines of output]</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+It is also possible to dump a single object with <span class="file">pg_dump</span>.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Dump <span class="host">detail</span> table
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_dump -t widget_detail test1</pre>
+                    <pre class="execute-body-output">       [filtered 24 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">CREATE TABLE widget_detail (</pre>
+                    <pre class="execute-body-output">    id integer NOT NULL,
+    widget_id integer NOT NULL,
+       [filtered 9 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget_detail (id, widget_id, key, value) FROM stdin;</pre>
+                    <pre class="execute-body-output">100	1	color	yellowish
+101	1	shape	squarish
+       [filtered 31 lines of output]</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+Or even just the data for a single object.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Dump <span class="host">detail</span> table
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_dump -a -t widget_detail test1</pre>
+                    <pre class="execute-body-output">       [filtered 20 lines of output]
+--
+</pre>
+                    <pre class="execute-body-output-highlight">COPY widget_detail (id, widget_id, key, value) FROM stdin;</pre>
+                    <pre class="execute-body-output">100	1	color	yellowish
+101	1	shape	squarish
+       [filtered 7 lines of output]</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+There are literally a ton of options.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> <span class="file">pg_dump</span> options (some interesting options highlighted)
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_dump --help</pre>
+                    <pre class="execute-body-output">pg_dump dumps a database as a text file or to other formats.
+
+Usage:
+  pg_dump [OPTION]... [DBNAME]
+
+General options:
+  -f, --file=FILENAME          output file or directory name
+  -F, --format=c|d|t|p         output file format (custom, directory, tar,
+                               plain text (default))
+  -j, --jobs=NUM               use this many parallel jobs to dump
+  -v, --verbose                verbose mode
+  -V, --version                output version information, then exit
+  -Z, --compress=0-9           compression level for compressed formats
+  --lock-wait-timeout=TIMEOUT  fail after waiting TIMEOUT for a table lock
+  -?, --help                   show this help, then exit
+
+Options controlling the output content:</pre>
+                    <pre class="execute-body-output-highlight">  -a, --data-only              dump only the data, not the schema</pre>
+                    <pre class="execute-body-output">  -b, --blobs                  include large objects in dump
+  -c, --clean                  clean (drop) database objects before recreating
+  -C, --create                 include commands to create database in dump
+  -E, --encoding=ENCODING      dump the data in encoding ENCODING
+  -n, --schema=SCHEMA          dump the named schema(s) only
+  -N, --exclude-schema=SCHEMA  do NOT dump the named schema(s)
+  -o, --oids                   include OIDs in dump
+  -O, --no-owner               skip restoration of object ownership in
+                               plain-text format</pre>
+                    <pre class="execute-body-output-highlight">  -s, --schema-only            dump only the schema, no data</pre>
+                    <pre class="execute-body-output">  -S, --superuser=NAME         superuser user name to use in plain-text format</pre>
+                    <pre class="execute-body-output-highlight">  -t, --table=TABLE            dump the named table(s) only
+  -T, --exclude-table=TABLE    do NOT dump the named table(s)</pre>
+                    <pre class="execute-body-output">  -x, --no-privileges          do not dump privileges (grant/revoke)
+  --binary-upgrade             for use by upgrade utilities only
+  --column-inserts             dump data as INSERT commands with column names
+  --disable-dollar-quoting     disable dollar quoting, use SQL standard quoting
+  --disable-triggers           disable triggers during data-only restore
+  --enable-row-security        enable row security (dump only content user has
+                               access to)</pre>
+                    <pre class="execute-body-output-highlight">  --exclude-table-data=TABLE   do NOT dump data for the named table(s)</pre>
+                    <pre class="execute-body-output">  --if-exists                  use IF EXISTS when dropping objects</pre>
+                    <pre class="execute-body-output-highlight">  --inserts                    dump data as INSERT commands, rather than COPY</pre>
+                    <pre class="execute-body-output">  --no-security-labels         do not dump security label assignments
+  --no-synchronized-snapshots  do not use synchronized snapshots in parallel jobs
+  --no-tablespaces             do not dump tablespace assignments
+  --no-unlogged-table-data     do not dump unlogged table data
+  --quote-all-identifiers      quote all identifiers, even if not key words
+  --section=SECTION            dump named section (pre-data, data, or post-data)
+  --serializable-deferrable    wait until the dump can run without anomalies
+  --snapshot=SNAPSHOT          use given snapshot for the dump
+  --strict-names               require table and/or schema include patterns to
+                               match at least one entity each
+  --use-set-session-authorization
+                               use SET SESSION AUTHORIZATION commands instead of
+                               ALTER OWNER commands to set ownership
+
+Connection options:
+  -d, --dbname=DBNAME      database to dump
+  -h, --host=HOSTNAME      database server host or socket directory
+  -p, --port=PORT          database server port number
+  -U, --username=NAME      connect as specified database user
+  -w, --no-password        never prompt for password
+  -W, --password           force password prompt (should happen automatically)
+  --role=ROLENAME          do SET ROLE before dump
+
+If no database name is supplied, then the PGDATABASE environment
+variable value is used.
+
+Report bugs to <pgsql-bugs@postgresql.org>.</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="section3">
+              <a id="pg-dump/usage/restore-data"></a>
+              <div class="section3-header">
+                <div class="section3-number">
+4.2.2
+                </div>
+                <div class="section3-title">
+Restoring data
+                </div>
+              </div>
+              <div class="section-body">
+                <div class="section-body-text">
+The power of <span class="host">pg_dump</span> is the ability to dump and restore specific parts of a cluster.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Dump <span class="host">test1</span> database
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres bash -c 'pg_dump test1 > /var/lib/pgsql/9.6/backups/db-test1.dump'</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Restore the dump to the test2 database
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres psql -c 'create database test2'</pre>
+                    <pre class="execute-body-output">CREATE DATABASE</pre>
+                    <pre class="execute-body-cmd">sudo -u postgres psql -f /var/lib/pgsql/9.6/backups/db-test1.dump test2</pre>
+                    <pre class="execute-body-output">SET
+SET
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE EXTENSION
+COMMENT
+SET
+SET
+SET
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+COPY 2
+COPY 4
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Query test2 database to demonstrate success
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres psql -c 'select * from widget' test2</pre>
+                    <pre class="execute-body-output"> id |     name     
+----+--------------
+  1 | thingamabob
+  2 | whatsawhosit
+(2 rows)</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+Unfortunately, <span class="host">psql</span> is not very concerned with errors by default.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Run again to show errors
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres psql -f /var/lib/pgsql/9.6/backups/db-test1.dump test2</pre>
+                    <pre class="execute-body-output">       [filtered 11 lines of output]
+SET
+SET</pre>
+                    <pre class="execute-body-output-highlight">psql:/var/lib/pgsql/9.6/backups/db-test1.dump:44: ERROR:  relation "widget" already exists</pre>
+                    <pre class="execute-body-output">ALTER TABLE</pre>
+                    <pre class="execute-body-output-highlight">psql:/var/lib/pgsql/9.6/backups/db-test1.dump:58: ERROR:  relation "widget_detail" already exists</pre>
+                    <pre class="execute-body-output">ALTER TABLE</pre>
+                    <pre class="execute-body-output-highlight">psql:/var/lib/pgsql/9.6/backups/db-test1.dump:70: ERROR:  duplicate key value violates unique constraint "widget_pk"</pre>
+                    <pre class="execute-body-output">DETAIL:  Key (id)=(1) already exists.
+CONTEXT:  COPY widget, line 1</pre>
+                    <pre class="execute-body-output-highlight">psql:/var/lib/pgsql/9.6/backups/db-test1.dump:82: ERROR:  duplicate key value violates unique constraint "widgetdetail_key_id_unq"</pre>
+                    <pre class="execute-body-output">DETAIL:  Key (key, id)=(color, 100) already exists.
+CONTEXT:  COPY widget_detail, line 1</pre>
+                    <pre class="execute-body-output-highlight">psql:/var/lib/pgsql/9.6/backups/db-test1.dump:90: ERROR:  multiple primary keys for table "widget" are not allowed
+psql:/var/lib/pgsql/9.6/backups/db-test1.dump:98: ERROR:  relation "widgetdetail_key_id_unq" already exists
+psql:/var/lib/pgsql/9.6/backups/db-test1.dump:106: ERROR:  multiple primary keys for table "widget_detail" are not allowed
+psql:/var/lib/pgsql/9.6/backups/db-test1.dump:114: ERROR:  constraint "widgetdetail_widgetid_fk" for relation "widget_detail" already exists</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+But it is possible to fix this with some <span class="host">sed</span> magic.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Force <span class="host">psql</span> to exit on first error
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres bash -c ' \
+       cat /var/lib/pgsql/9.6/backups/db-test1.dump | \
+       sed -e "1s/^/\\\\set QUIET on\n\\\\set ON_ERROR_STOP on\nbegin transaction;\n/" -e "\$acommit;\n" | \
+       psql test2'</pre>
+                    <pre class="execute-body-output-highlight-error">ERROR:  relation "widget" already exists</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="pg-basebackup"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+5
+        </div>
+        <div class="section1-title">
+pg_basebackup
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section2">
+          <a id="pg-basebackup/intro"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+5.1
+            </div>
+            <div class="section2-title">
+Introduction
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+<span class="host">pg_basebackup</span> is a core tool that performs file-level backups of a <span class="postgres">PostgreSQL</span> cluster.
+            </div>
+            <div class="section-body-text">
+Pros:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+Allows point-in-time recovery.
+              </li>
+              <li class="list-unordered">
+Indexes do not need to be recreated.
+              </li>
+            </ul>
+            <div class="section-body-text">
+Cons:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+Single-threaded.
+              </li>
+              <li class="list-unordered">
+Not granular &mdash; the entire cluster must be backed up.
+              </li>
+              <li class="list-unordered">
+No archive command for WAL generated in between backups (may use <span class="file">pg_receive_xlog</span>).
+              </li>
+              <li class="list-unordered">
+No backup or WAL management (i.e., expiring of old backups and WAL).
+              </li>
+            </ul>
+            <div class="section-body-text">
+More information about pg_basebackup can be found in the <a href="https://www.postgresql.org/docs/9.6/static/app-pgbasebackup.html">PostgreSQL Documentation</a>.
+            </div>
+            <div class="section-body-text">
+<b>Start working at this point by running</b>:<br/>
+<br/>
+<span class="id">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;--include=backup-training --require=/pg-basebackup/intro</span>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pg-basebackup/usage"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+5.2
+            </div>
+            <div class="section2-title">
+Usage
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section3">
+              <a id="pg-basebackup/usage/create-base-backup"></a>
+              <div class="section3-header">
+                <div class="section3-number">
+5.2.1
+                </div>
+                <div class="section3-title">
+Create a Base Backup
+                </div>
+              </div>
+              <div class="section-body">
+                <div class="section-body-text">
+<span class="file">pg_basebackup</span> always makes a backup of the entire cluster.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Enable replication for <span class="id">postgres</span> user
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres bash -c 'echo "local replication postgres peer" >> /var/lib/pgsql/9.6/data/pg_hba.conf'</pre>
+                    <pre class="execute-body-cmd">sudo systemctl reload postgresql-9.6</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Backup entire cluster
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres pg_basebackup --checkpoint=fast -D /var/lib/pgsql/9.6/backups/backup1</pre>
+                    <pre class="execute-body-output">NOTICE:  WAL archiving is not enabled; you must ensure that all required WAL segments are copied through other means to complete the backup</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+<span class="file">pg_basebackup</span> does not copy WAL to the backup directory by default. Checking the <span class="path">pg_xlog</span> directory demonstrates that no WAL was copied.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check for WAL in backup <span class="path">pg_xlog</span> directory
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres ls -lah /var/lib/pgsql/9.6/backups/backup1/pg_xlog</pre>
+                    <pre class="execute-body-output">total 4.0K
+drwx------.  3 postgres postgres   28 Sep  6 18:12 .
+drwx------. 20 postgres postgres 4.0K Sep  6 18:12 ..
+drwx------.  2 postgres postgres    6 Sep  6 18:12 archive_status</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+Try again using the option to automatically copy WAL.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Backup entire cluster with WAL
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres rm -rf /var/lib/pgsql/9.6/backups/backup1</pre>
+                    <pre class="execute-body-cmd">sudo -u postgres pg_basebackup --checkpoint=fast -X stream -D /var/lib/pgsql/9.6/backups/backup1</pre>
+                  </div>
+                </div>
+                <div class="section-body-text">
+Now the WAL required to make the backup consistent is present.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check for WAL in backup <span class="path">pg_xlog</span> directory
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres ls -lah /var/lib/pgsql/9.6/backups/backup1/pg_xlog</pre>
+                    <pre class="execute-body-output">total 17M
+drwx------.  3 postgres postgres   60 Sep  6 18:12 .
+drwx------. 20 postgres postgres 4.0K Sep  6 18:12 ..
+-rw-------.  1 postgres postgres  16M Sep  6 18:12 000000010000000000000003
+drwx------.  2 postgres postgres    6 Sep  6 18:12 archive_status</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="section3">
+              <a id="pg-basebackup/usage/restore-base-backup"></a>
+              <div class="section3-header">
+                <div class="section3-number">
+5.2.2
+                </div>
+                <div class="section3-title">
+Restore a Base Backup
+                </div>
+              </div>
+              <div class="section-body">
+                <div class="section-body-text">
+<span class="host">pg_basebackup</span> does not have a restore command so the simplest way to restore a base backup is to replace the existing data directory.
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Stop <span class="postgres">PostgreSQL</span>
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo systemctl stop postgresql-9.6</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Move current <span class="id">PDATA</span> to a new directory
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo mv /var/lib/pgsql/9.6/data /var/lib/pgsql/9.6/data.save</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Copy base backup to <span class="id">PDATA</span> and fix permissions
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo cp -r /var/lib/pgsql/9.6/backups/backup1 /var/lib/pgsql/9.6/data</pre>
+                    <pre class="execute-body-cmd">sudo chown -R postgres:postgres /var/lib/pgsql/9.6/data</pre>
+                    <pre class="execute-body-cmd">sudo chmod -R u+r,u+w,g=,o= /var/lib/pgsql/9.6/data</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Start <span class="postgres">PostgreSQL</span>
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+                  </div>
+                </div>
+                <div class="execute">
+                  <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check the <span class="postgres">PostgreSQL</span> log to demonstrate that recovery was successful
+                  </div>
+                  <div class="execute-body">
+                    <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/pg_log/postgresql.log</pre>
+                    <pre class="execute-body-output-highlight">LOG:  database system was interrupted; last known up at 2017-09-06 18:12:25 UTC</pre>
+                    <pre class="execute-body-output">LOG:  redo starts at 0/3000028</pre>
+                    <pre class="execute-body-output-highlight">LOG:  consistent recovery state reached at 0/30000F8</pre>
+                    <pre class="execute-body-output">LOG:  redo done at 0/30000F8
+LOG:  MultiXact member wraparound protections are now enabled</pre>
+                    <pre class="execute-body-output-highlight">LOG:  database system is ready to accept connections</pre>
+                    <pre class="execute-body-output">LOG:  autovacuum launcher started</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="pgbackrest"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+6
+        </div>
+        <div class="section1-title">
+<span class="backrest">pgBackRest</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section2">
+          <a id="pgbackrest/introduction"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.1
+            </div>
+            <div class="section2-title">
+Introduction
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+<span class="backrest">pgBackRest</span> is an alternative to the core utilities that uses the low-level backup method to produce a backup similar to <span class="host">pg_basebackup</span>. Other tools of this type include <a href="http://www.pgbarman.org/">Barman</a>, <a href="https://github.com/wal-e/wal-e">WAL-E</a>/<a href="https://github.com/wal-g/wal-g">WAL-G</a>, <a href="https://github.com/omniti-labs/omnipitr">OmniPITR</a>, <a href="https://github.com/ohmu/pghoard">PGHoard</a>, and <a href="https://github.com/postgrespro/pg_probackup">pg_probackup</a>.
+            </div>
+            <div class="section-body-text">
+<span class="backrest">pgBackRest</span> includes most of the important features of the other tools, though each has its specialties.
+            </div>
+            <div class="section-body-text">
+Pros:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+Allows point-in-time recovery.
+              </li>
+              <li class="list-unordered">
+Indexes do not need to be recreated.
+              </li>
+              <li class="list-unordered">
+Built-in archive command.
+              </li>
+              <li class="list-unordered">
+Built-in backup and WAL management.
+              </li>
+              <li class="list-unordered">
+Multi-threaded.
+              </li>
+            </ul>
+            <div class="section-body-text">
+Cons:
+            </div>
+            <ul class="list-unordered">
+              <li class="list-unordered">
+Not distributed with <span class="postgres">PostgreSQL</span>.
+              </li>
+            </ul>
+            <div class="section-body-text">
+More information about low-level backups can be found in the <a href="https://www.postgresql.org/docs/9.6/static/continuous-archiving.html">PostgreSQL Documentation</a>.
+            </div>
+            <div class="section-body-text">
+More information about <span class="backrest">pgBackRest</span> can be found at <a href="http://www.pgbackrest.org">the website</a>.
+            </div>
+            <div class="section-body-text">
+<b>Start working at this point by running</b>:<br/>
+<br/>
+<span class="id">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;--include=backup-training --require=/pgbackrest/intro</span>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pgbackrest/install"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.2
+            </div>
+            <div class="section2-title">
+Installation
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="section-body-text">
+<span class="backrest">pgBackRest</span> can be installed from <a href="https://yum.postgresql.org/">yum.postgresql.org</a> using the same repository as <span class="postgres">PostgreSQL</span>.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Install <span class="backrest">pgBackRest</span>
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest</pre>
+                <pre class="execute-body-output">pgBackRest 1.22 - General help
+
+Usage:
+    pgbackrest [options] [command]
+
+Commands:
+    archive-get     Get a WAL segment from the archive.
+    archive-push    Push a WAL segment to the archive.
+    backup          Backup a database cluster.
+    check           Check the configuration.
+    expire          Expire backups that exceed retention.
+    help            Get help.
+    info            Retrieve information about backups.
+    restore         Restore a database cluster.
+    stanza-create   Create the required stanza data.
+    stanza-upgrade  Upgrade a stanza.
+    start           Allow pgBackRest processes to run.
+    stop            Stop pgBackRest processes from running.
+    version         Get version.
+
+Use 'pgbackrest help [command]' for more information.</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pgbackrest/setup"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.3
+            </div>
+            <div class="section2-title">
+Setup
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/etc/pgbackrest.conf</span> <b>&#x21d2;</b> Configure the <span class="postgres">PostgreSQL</span> cluster data directory and repository path
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+[global]<br/>
+repo-path=/var/lib/pgbackrest<br/>
+start-fast=y<br/>
+<br/>
+[main]<br/>
+db-path=/var/lib/pgsql/9.6/data
+                </div>
+              </div>
+            </div>
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/var/lib/pgsql/9.6/data/postgresql.conf</span> <b>&#x21d2;</b> Configure <span class="postgres">PostgreSQL</span>
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+archive_command = 'pgbackrest --stanza=main archive-push %p'<br/>
+archive_mode = on<br/>
+listen_addresses = '*'<br/>
+log_filename = 'postgresql.log'<br/>
+log_line_prefix = ''<br/>
+max_wal_senders = 10<br/>
+wal_level = replica
+                </div>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Restart <span class="postgres">PostgreSQL</span> to enable WAL archiving
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres bash -c 'echo "local replication postgres peer" >> /var/lib/pgsql/9.6/data/pg_hba.conf'</pre>
+                <pre class="execute-body-cmd">sudo systemctl restart postgresql-9.6</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Create the <span class="host">main</span> stanza
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main stanza-create</pre>
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main info</pre>
+                <pre class="execute-body-output">stanza: main
+    status: error (no valid backups)
+
+    db (current)
+        wal archive min/max (9.6-1): none present</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check that WAL archiving configured
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main check</pre>
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main info</pre>
+                <pre class="execute-body-output">stanza: main
+    status: error (no valid backups)
+
+    db (current)
+        wal archive min/max (9.6-1): 000000010000000000000004 / 000000010000000000000004</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pgbackrest/backup"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.4
+            </div>
+            <div class="section2-title">
+Backup
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform first full backup
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --log-level-console=info backup</pre>
+                <pre class="execute-body-output">P00   INFO: backup command begin 1.22: --db-path=/var/lib/pgsql/9.6/data --log-level-console=info --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main --start-fast</pre>
+                <pre class="execute-body-output-highlight">P00   WARN: option retention-full is not set, the repository may run out of space</pre>
+                <pre class="execute-body-output">            HINT: to retain full backups indefinitely (without warning), set option 'retention-full' to the maximum.</pre>
+                <pre class="execute-body-output-highlight">P00   WARN: no prior backup exists, incr backup has been changed to full</pre>
+                <pre class="execute-body-output">P00   INFO: execute non-exclusive pg_start_backup() with label "pgBackRest backup started at 2017-09-06 18:12:33": backup begins after the requested immediate checkpoint completes</pre>
+                <pre class="execute-body-output-highlight">P00   INFO: backup start archive = 000000010000000000000005, lsn = 0/5000028</pre>
+                <pre class="execute-body-output">P01   INFO: backup file /var/lib/pgsql/9.6/data/base/16408/1255 (576KB, 1%) checksum 3ce577c404447f3a50cfbdb41382b410d18397f5
+P01   INFO: backup file /var/lib/pgsql/9.6/data/base/16384/1255 (576KB, 3%) checksum 3ce577c404447f3a50cfbdb41382b410d18397f5
+       [filtered 1419 lines of output]
+P01   INFO: backup file /var/lib/pgsql/9.6/data/base/1/12312 (0B, 100%)
+P01   INFO: backup file /var/lib/pgsql/9.6/data/base/1/12307 (0B, 100%)</pre>
+                <pre class="execute-body-output-highlight">P00   INFO: full backup size = 34.9MB</pre>
+                <pre class="execute-body-output">P00   INFO: execute non-exclusive pg_stop_backup() and wait for all WAL segments to archive
+P00   INFO: backup stop archive = 000000010000000000000005, lsn = 0/50000F8</pre>
+                <pre class="execute-body-output-highlight">P00   INFO: new backup label = 20170906-181233F</pre>
+                <pre class="execute-body-output">P00   INFO: backup command end: completed successfully
+P00   INFO: expire command begin 1.22: --log-level-console=info --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main
+P00   INFO: expire command end: completed successfully</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+The first backup must be full so <span class="backrest">pgBackRest</span> will change the backup type if necessary.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform differential backup
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --type=diff backup</pre>
+                <pre class="execute-body-output">P00   WARN: option retention-full is not set, the repository may run out of space
+            HINT: to retain full backups indefinitely (without warning), set option 'retention-full' to the maximum.</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Display backup info
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main info</pre>
+                <pre class="execute-body-output">stanza: main
+    status: ok
+
+    db (current)
+        wal archive min/max (9.6-1): 000000010000000000000004 / 000000010000000000000007
+</pre>
+                <pre class="execute-body-output-highlight">        full backup: 20170906-181233F</pre>
+                <pre class="execute-body-output">            timestamp start/stop: 2017-09-06 18:12:33 / 2017-09-06 18:12:44
+            wal start/stop: 000000010000000000000005 / 000000010000000000000005
+            database size: 34.9MB, backup size: 34.9MB
+            repository size: 4MB, repository backup size: 4MB
+</pre>
+                <pre class="execute-body-output-highlight">        diff backup: 20170906-181233F_20170906-181246D</pre>
+                <pre class="execute-body-output">            timestamp start/stop: 2017-09-06 18:12:46 / 2017-09-06 18:12:51
+            wal start/stop: 000000010000000000000007 / 000000010000000000000007
+            database size: 34.9MB, backup size: 8.2KB
+            repository size: 4MB, repository backup size: 394B
+            backup reference list: 20170906-181233F</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pgbackrest/retention"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.5
+            </div>
+            <div class="section2-title">
+Retention
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="config">
+              <div class="config-title">
+<span class="host">db-primary</span>:<span class="file">/etc/pgbackrest.conf</span> <b>&#x21d2;</b> Configure backup retention
+              </div>
+              <div class="config-body">
+                <div class="config-body-output">
+[global]<br/>
+repo-path=/var/lib/pgbackrest<br/>
+retention-diff=2<br/>
+retention-full=2<br/>
+start-fast=y<br/>
+<br/>
+[main]<br/>
+db-path=/var/lib/pgsql/9.6/data
+                </div>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform second full backup
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --type=full backup</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform third full backup and check that the first full backup has expired
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --type=full backup</pre>
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main info</pre>
+                <pre class="execute-body-output">stanza: main
+    status: ok
+
+    db (current)
+        wal archive min/max (9.6-1): 000000010000000000000008 / 000000010000000000000009
+</pre>
+                <pre class="execute-body-output-highlight">        full backup: 20170906-181253F</pre>
+                <pre class="execute-body-output">            timestamp start/stop: 2017-09-06 18:12:53 / 2017-09-06 18:13:03
+            wal start/stop: 000000010000000000000008 / 000000010000000000000008
+            database size: 34.9MB, backup size: 34.9MB
+            repository size: 4MB, repository backup size: 4MB
+</pre>
+                <pre class="execute-body-output-highlight">        full backup: 20170906-181306F</pre>
+                <pre class="execute-body-output">            timestamp start/stop: 2017-09-06 18:13:06 / 2017-09-06 18:13:16
+            wal start/stop: 000000010000000000000009 / 000000010000000000000009
+            database size: 34.9MB, backup size: 34.9MB
+            repository size: 4MB, repository backup size: 4MB</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section2">
+          <a id="pgbackrest/restore"></a>
+          <div class="section2-header">
+            <div class="section2-number">
+6.6
+            </div>
+            <div class="section2-title">
+Restore
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Attempt a restore
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --delta restore</pre>
+                <pre class="execute-body-output-highlight-error">P00  ERROR: [038]: unable to restore while PostgreSQL is running</pre>
+                <pre class="execute-body-output">            HINT: presence of 'postmaster.pid' in '/var/lib/pgsql/9.6/data' indicates PostgreSQL is running.
+            HINT: remove 'postmaster.pid' only if PostgreSQL is not running.</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+Why the failure? <span class="postgres">PostgreSQL</span> must be stopped before a restore can be performed.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Stop <span class="postgres">PostgreSQL</span>
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo systemctl stop postgresql-9.6</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform restore
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --delta --log-level-console=detail restore</pre>
+                <pre class="execute-body-output">P00   INFO: restore command begin 1.22: --db-path=/var/lib/pgsql/9.6/data --delta --log-level-console=detail --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main
+P00   INFO: restore backup set 20170906-181306F
+P00 DETAIL: check /var/lib/pgsql/9.6/data exists</pre>
+                <pre class="execute-body-output-highlight">P00   INFO: remove invalid files/paths/links from /var/lib/pgsql/9.6/data
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/postmaster.opts
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/archive_status/000000010000000000000009.done
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/archive_status/000000010000000000000009.00000028.backup.done
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/00000001000000000000000C
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/00000001000000000000000B
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/00000001000000000000000A
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/000000010000000000000009.00000028.backup
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_xlog/000000010000000000000009
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_subtrans/0000
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_stat/global.stat
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_stat/db_12470.stat
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/pg_stat/db_0.stat
+P00 DETAIL: remove file /var/lib/pgsql/9.6/data/backup_label.old</pre>
+                <pre class="execute-body-output">P00   INFO: cleanup removed 13 files
+P01 DETAIL: restore file /var/lib/pgsql/9.6/data/base/16408/1255 - exists and matches backup (576KB, 1%) checksum 3ce577c404447f3a50cfbdb41382b410d18397f5
+       [filtered 1421 lines of output]
+P01 DETAIL: restore file /var/lib/pgsql/9.6/data/base/1/12312 - exists and is zero size (0B, 100%)
+P01 DETAIL: restore file /var/lib/pgsql/9.6/data/base/1/12307 - exists and is zero size (0B, 100%)</pre>
+                <pre class="execute-body-output-highlight">P00   INFO: write /var/lib/pgsql/9.6/data/recovery.conf
+P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)</pre>
+                <pre class="execute-body-output">P00   INFO: restore command end: completed successfully</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+<span class="backrest">pgBackRest</span> automatically create the <span class="file">recovery.conf</span> required to fetch WAL from the archive
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Show <span class="file">recovery.conf</span> file
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/recovery.conf</pre>
+                <pre class="execute-body-output">restore_command = '/usr/bin/pgbackrest --log-level-console=detail --stanza=main archive-get %f "%p"'</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+During the backup <span class="postgres">PostgreSQL</span> create a <span class="file">backup_label</span> which defines the checkpoint where WAL replay must start.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Show <span class="file">backup_label</span> file
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/backup_label</pre>
+                <pre class="execute-body-output">START WAL LOCATION: 0/9000028 (file 000000010000000000000009)</pre>
+                <pre class="execute-body-output-highlight">CHECKPOINT LOCATION: 0/9000060</pre>
+                <pre class="execute-body-output">BACKUP METHOD: streamed
+BACKUP FROM: master
+START TIME: 2017-09-06 18:13:07 UTC
+LABEL: pgBackRest backup started at 2017-09-06 18:13:06</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Start <span class="postgres">PostgreSQL</span>
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+              </div>
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check the <span class="postgres">PostgreSQL</span> log to demonstrate that recovery was successful
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/pg_log/postgresql.log</pre>
+                <pre class="execute-body-output-highlight">LOG:  database system was interrupted; last known up at 2017-09-06 18:13:07 UTC</pre>
+                <pre class="execute-body-output">LOG:  starting archive recovery
+P00   INFO: archive-get command begin 1.22: --db-path=/var/lib/pgsql/9.6/data --log-level-console=detail --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main
+       [filtered 2 lines of output]
+LOG:  restored log file "000000010000000000000009" from archive
+LOG:  redo starts at 0/9000028</pre>
+                <pre class="execute-body-output-highlight">LOG:  consistent recovery state reached at 0/9000130</pre>
+                <pre class="execute-body-output">P00   INFO: archive-get command begin 1.22: --db-path=/var/lib/pgsql/9.6/data --log-level-console=detail --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main
+P00   INFO: get WAL segment 00000001000000000000000A
+       [filtered 9 lines of output]
+P00   INFO: unable to find 00000002.history in the archive
+P00   INFO: archive-get command end: completed successfully</pre>
+                <pre class="execute-body-output-highlight">LOG:  selected new timeline ID: 2</pre>
+                <pre class="execute-body-output">P00   INFO: archive-get command begin 1.22: --db-path=/var/lib/pgsql/9.6/data --log-level-console=detail --log-level-stderr=off --no-log-timestamp --repo-path=/var/lib/pgbackrest --stanza=main
+P00   INFO: get WAL segment 00000001.history
+       [filtered 2 lines of output]
+LOG:  archive recovery complete
+LOG:  MultiXact member wraparound protections are now enabled</pre>
+                <pre class="execute-body-output-highlight">LOG:  database system is ready to accept connections</pre>
+                <pre class="execute-body-output">LOG:  autovacuum launcher started</pre>
+              </div>
+            </div>
+            <div class="section-body-text">
+Note that a new timeline has been started. This happens whenever a cluster in recovery is promoted. The new timeline prevents duplicate WAL in the repo when a recovery does not play all the way to the end of the WAL stream.
+            </div>
+            <div class="execute">
+              <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Check repository for the new timeline
+              </div>
+              <div class="execute-body">
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main check</pre>
+                <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main info</pre>
+                <pre class="execute-body-output">       [filtered 2 lines of output]
+
+    db (current)</pre>
+                <pre class="execute-body-output-highlight">        wal archive min/max (9.6-1): 000000010000000000000008 / 00000002000000000000000A</pre>
+                <pre class="execute-body-output">
+        full backup: 20170906-181253F
+       [filtered 9 lines of output]</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section1">
+      <a id="pitr"></a>
+      <div class="section1-header">
+        <div class="section1-number">
+7
+        </div>
+        <div class="section1-title">
+Point-in-Time Recovery
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section-body-text">
+The <a href="#pgbackrest/restore">Restore</a> performed default recovery, which is to play all the way to the end of the WAL stream. In the case of a hardware failure this is usually the best choice but for data corruption scenarios (whether machine or human in origin) Point-in-Time Recovery (PITR) is often more appropriate.
+        </div>
+        <div class="section-body-text">
+Point-in-Time Recovery (PITR) allows the WAL to be played from the last backup to a specified time, transaction id, or recovery point. For common recovery scenarios time-based recovery is arguably the most useful. A typical recovery scenario is to restore a table that was accidentally dropped or data that was accidentally deleted. Recovering a dropped table is more dramatic so that's the example given here but deleted data would be recovered in exactly the same way.
+        </div>
+        <div class="section-body-text">
+<b>Start working at this point by running</b>:<br/>
+<br/>
+<span class="id">/docdynamo/doc/doc.pl --no-cache --doc-path=/training/doc \<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;--include=backup-training --require=/pgbackrest/setup</span>
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Backup the main cluster and create a table with very important data
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --type=diff backup</pre>
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "begin; \
+       create table important_table (message text); \
+       insert into important_table values ('Important Data'); \
+       commit; \
+       select * from important_table;"</pre>
+            <pre class="execute-body-output">    message     
+----------------</pre>
+            <pre class="execute-body-output-highlight"> Important Data</pre>
+            <pre class="execute-body-output">(1 row)</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+It is important to represent the time as reckoned by <span class="postgres">PostgreSQL</span> and to include timezone offsets. This reduces the possibility of unintended timezone conversions and an unexpected recovery result.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Get the time from <span class="postgres">PostgreSQL</span>
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres psql -Atc "select current_timestamp"</pre>
+            <pre class="execute-body-output">2017-09-06 18:13:38.52841+00</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Now that the time has been recorded the table is dropped. In practice finding the exact time that the table was dropped is a lot harder than in this example. It may not be possible to find the exact time, but some forensic work should be able to get you close.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Drop the important table
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "begin; \
+       drop table important_table; \
+       commit; \
+       select * from important_table;"</pre>
+            <pre class="execute-body-output-highlight-error">ERROR:  relation "important_table" does not exist</pre>
+            <pre class="execute-body-output">LINE 1: ...le important_table;     commit;     select * from important_...
+                                                             ^</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Now the restore can be performed with time-based recovery to bring back the missing table.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Stop <span class="postgres">PostgreSQL</span>, restore the main cluster to <span class="id">2017-09-06 18:13:38.52841+00</span>, and display <span class="file">recovery.conf</span>
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo systemctl stop postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --delta \
+       --type=time "--target=2017-09-06 18:13:38.52841+00" restore</pre>
+            <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/recovery.conf</pre>
+            <pre class="execute-body-output">restore_command = '/usr/bin/pgbackrest --stanza=main archive-get %f "%p"'</pre>
+            <pre class="execute-body-output-highlight">recovery_target_time = '2017-09-06 18:13:38.52841+00'</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+The <span class="file">recovery.conf</span> file has been automatically generated by <span class="backrest">pgBackRest</span> so <span class="postgres">PostgreSQL</span> can be started immediately. Once <span class="postgres">PostgreSQL</span> has finished recovery the table will exist again and can be queried.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Start <span class="postgres">PostgreSQL</span> and check that the important table exists
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "select * from important_table"</pre>
+            <pre class="execute-body-output">    message     
+----------------</pre>
+            <pre class="execute-body-output-highlight"> Important Data</pre>
+            <pre class="execute-body-output">(1 row)</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+The <span class="postgres">PostgreSQL</span> log also contains valuable information. It will indicate the time and transaction where the recovery stopped and also give the time of the last transaction to be applied.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Examine the <span class="postgres">PostgreSQL</span> log output
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/pg_log/postgresql.log</pre>
+            <pre class="execute-body-output">LOG:  database system was interrupted; last known up at 2017-09-06 18:13:32 UTC</pre>
+            <pre class="execute-body-output-highlight">LOG:  starting point-in-time recovery to 2017-09-06 18:13:38.52841+00</pre>
+            <pre class="execute-body-output">LOG:  restored log file "00000002.history" from archive
+LOG:  restored log file "00000002000000000000000B" from archive
+LOG:  redo starts at 0/B000028
+LOG:  consistent recovery state reached at 0/B0000F8
+LOG:  restored log file "00000002000000000000000C" from archive</pre>
+            <pre class="execute-body-output-highlight">LOG:  recovery stopping before commit of transaction 654, time 2017-09-06 18:13:38.623298+00</pre>
+            <pre class="execute-body-output">LOG:  redo done at 0/C01D458</pre>
+            <pre class="execute-body-output-highlight">LOG:  last completed transaction was at log time 2017-09-06 18:13:38.379019+00</pre>
+            <pre class="execute-body-output">LOG:  selected new timeline ID: 3
+LOG:  restored log file "00000002.history" from archive
+       [filtered 3 lines of output]</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+This example was rigged to give the correct result. If a backup after the required time is chosen then <span class="postgres">PostgreSQL</span> will not be able to recover the lost table. <span class="postgres">PostgreSQL</span> can only play forward, not backward. To demonstrate this the important table must be dropped (again).
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Drop the important table (again)
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "begin; \
+       drop table important_table; \
+       commit; \
+       select * from important_table;"</pre>
+            <pre class="execute-body-output-highlight-error">ERROR:  relation "important_table" does not exist</pre>
+            <pre class="execute-body-output">LINE 1: ...le important_table;     commit;     select * from important_...
+                                                             ^</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Now take a new backup and attempt recovery from the new backup.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Perform a backup then attempt recovery from that backup
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --type=incr backup</pre>
+            <pre class="execute-body-cmd">sudo systemctl stop postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --delta \
+       --type=time "--target=2017-09-06 18:13:38.52841+00" restore</pre>
+            <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "select * from important_table"</pre>
+            <pre class="execute-body-output-highlight-error">ERROR:  relation "important_table" does not exist</pre>
+            <pre class="execute-body-output">LINE 1: select * from important_table
+                      ^</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Looking at the log output it's not obvious that recovery failed to restore the table. The key is to look for the presence of the <q>recovery stopping before...</q> and <q>last completed transaction...</q> log messages. If they are not present then the recovery to the specified point-in-time was not successful.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Examine the <span class="postgres">PostgreSQL</span> log output to discover the recovery was not successful
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/pg_log/postgresql.log</pre>
+            <pre class="execute-body-output">LOG:  database system was interrupted; last known up at 2017-09-06 18:13:51 UTC</pre>
+            <pre class="execute-body-output-highlight">LOG:  starting point-in-time recovery to 2017-09-06 18:13:38.52841+00</pre>
+            <pre class="execute-body-output">LOG:  restored log file "00000003.history" from archive
+LOG:  restored log file "00000003000000000000000D" from archive
+LOG:  redo starts at 0/D000028</pre>
+            <pre class="execute-body-output-highlight">LOG:  consistent recovery state reached at 0/D0000F8</pre>
+            <pre class="execute-body-output">LOG:  redo done at 0/D0000F8
+LOG:  restored log file "00000003000000000000000D" from archive
+       [filtered 7 lines of output]</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Using an earlier backup will allow <span class="postgres">PostgreSQL</span> to play forward to the correct time. The <span class="cmd">info</span> command can be used to find the next to last backup.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Get backup info for the main cluster
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest info</pre>
+            <pre class="execute-body-output">stanza: main
+    status: ok
+
+    db (current)
+        wal archive min/max (9.6-1): 000000010000000000000008 / 00000003000000000000000D
+
+        full backup: 20170906-181253F
+            timestamp start/stop: 2017-09-06 18:12:53 / 2017-09-06 18:13:03
+            wal start/stop: 000000010000000000000008 / 000000010000000000000008
+            database size: 34.9MB, backup size: 34.9MB
+            repository size: 4MB, repository backup size: 4MB
+
+        full backup: 20170906-181306F
+            timestamp start/stop: 2017-09-06 18:13:06 / 2017-09-06 18:13:16
+            wal start/stop: 000000010000000000000009 / 000000010000000000000009
+            database size: 34.9MB, backup size: 34.9MB
+            repository size: 4MB, repository backup size: 4MB
+</pre>
+            <pre class="execute-body-output-highlight">        diff backup: 20170906-181306F_20170906-181331D</pre>
+            <pre class="execute-body-output">            timestamp start/stop: 2017-09-06 18:13:31 / 2017-09-06 18:13:36
+            wal start/stop: 00000002000000000000000B / 00000002000000000000000B
+            database size: 34.9MB, backup size: 160.8KB
+            repository size: 4MB, repository backup size: 16.2KB
+            backup reference list: 20170906-181306F
+
+        incr backup: 20170906-181306F_20170906-181350I
+            timestamp start/stop: 2017-09-06 18:13:50 / 2017-09-06 18:13:55
+            wal start/stop: 00000003000000000000000D / 00000003000000000000000D
+            database size: 34.9MB, backup size: 2.1MB
+            repository size: 4MB, repository backup size: 225.1KB
+            backup reference list: 20170906-181306F</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+The default behavior for restore is to use the last backup but an earlier backup can be specified with the <span class="br-option">--set</span> option.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Stop <span class="postgres">PostgreSQL</span>, restore from the selected backup, and start <span class="postgres">PostgreSQL</span>
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo systemctl stop postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres pgbackrest --stanza=main --delta \
+       --type=time "--target=2017-09-06 18:13:38.52841+00" \
+       --set=20170906-181306F_20170906-181331D restore</pre>
+            <pre class="execute-body-cmd">sudo systemctl start postgresql-9.6</pre>
+            <pre class="execute-body-cmd">sudo -u postgres psql -c "select * from important_table"</pre>
+            <pre class="execute-body-output">    message     
+----------------</pre>
+            <pre class="execute-body-output-highlight"> Important Data</pre>
+            <pre class="execute-body-output">(1 row)</pre>
+          </div>
+        </div>
+        <div class="section-body-text">
+Now the the log output will contain the expected <q>recovery stopping before...</q> and <q>last completed transaction...</q> messages showing that the recovery was successful.
+        </div>
+        <div class="execute">
+          <div class="execute-title">
+<span class="host">db-primary</span> <b>&#x21d2;</b> Examine the <span class="postgres">PostgreSQL</span> log output for log messages indicating success
+          </div>
+          <div class="execute-body">
+            <pre class="execute-body-cmd">sudo -u postgres cat /var/lib/pgsql/9.6/data/pg_log/postgresql.log</pre>
+            <pre class="execute-body-output">LOG:  database system was interrupted; last known up at 2017-09-06 18:13:32 UTC</pre>
+            <pre class="execute-body-output-highlight">LOG:  starting point-in-time recovery to 2017-09-06 18:13:38.52841+00</pre>
+            <pre class="execute-body-output">LOG:  restored log file "00000002.history" from archive
+LOG:  restored log file "00000002000000000000000B" from archive
+LOG:  redo starts at 0/B000028
+LOG:  consistent recovery state reached at 0/B0000F8
+LOG:  restored log file "00000002000000000000000C" from archive</pre>
+            <pre class="execute-body-output-highlight">LOG:  recovery stopping before commit of transaction 654, time 2017-09-06 18:13:38.623298+00</pre>
+            <pre class="execute-body-output">LOG:  redo done at 0/C01D458</pre>
+            <pre class="execute-body-output-highlight">LOG:  last completed transaction was at log time 2017-09-06 18:13:38.379019+00</pre>
+            <pre class="execute-body-output">LOG:  restored log file "00000003.history" from archive
+LOG:  restored log file "00000004.history" from archive
+       [filtered 5 lines of output]</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+Copyright &copy; 2015-2017, The PostgreSQL Global Development Group, <a href="https://github.com/pgbackrest/training/blob/master/LICENSE">MIT License</a>.  Updated September 6, 2017
+  </div>
+</body>
+</html>
